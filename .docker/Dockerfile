@@ -1,8 +1,10 @@
+FROM composer:latest as composer
+
 FROM wordpress:latest
 
-RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/p' /etc/os-release)-backports main" >> /etc/apt/sources.list
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends \
+RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/p' /etc/os-release)-backports main" >> /etc/apt/sources.list \
+&& apt-get update \
+&& apt-get install -y --no-install-recommends \
         bash-completion \
         bindfs \
         ghostscript \
@@ -43,5 +45,15 @@ RUN pecl install "xdebug" \
         echo "xdebug.remote_enable=1"; \
         echo "xdebug.idekey=PHPSTORM"; \
     } > /usr/local/etc/php/conf.d/xdebug.ini
+
+
+RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+    && php wp-cli.phar --info --allow-root \
+    && chmod +x wp-cli.phar \
+    && mv wp-cli.phar /usr/local/bin/wp \
+    && a2enconf fqdn \
+    && a2enmod rewrite expires
+
+COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 EXPOSE 9003

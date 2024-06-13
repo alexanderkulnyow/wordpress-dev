@@ -43,3 +43,4 @@ phpcs.xml
 phpunit.xml
 phpunit-watcher.yml
 /wp/
+LICENSE
