@@ -26,8 +26,6 @@ composer: ## install vendor packages
 ##
 ## CODE
 ## ----
-url:
-	$(WORDPRESS) wp search-replace 'https://piesoft.us' 'http://localhost:8083' --all-tables --allow-root
 
 plugins:
 	$(WORDPRESS) wp plugin install wordpress-importer --activate --allow-root
