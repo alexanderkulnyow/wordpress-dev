@@ -42,5 +42,4 @@ playwright.config.override.ts
 phpcs.xml
 phpunit.xml
 phpunit-watcher.yml
-/var/
 /wp/
