@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<phpdoc>
+    <title>WooCommerce Code Reference</title>
+    <files>
+        <directory>wp-content/theme/piesoft/</directory>
+    </files>
+</phpdoc>
