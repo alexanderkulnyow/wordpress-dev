@@ -26,6 +26,7 @@ RUN pecl install "xdebug" \
     && { \
         echo 'memory_limit = 512M'; \
         echo 'upload_max_filesize = 50M'; \
+        echo 'post_max_size = 100M'; \
         echo 'max_input_vars=2000'; \
     } > /usr/local/etc/php/php.ini \
     && { \
