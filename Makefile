@@ -9,6 +9,7 @@ WORDPRESS   = $(DOCKER) exec wordpress
 
 start: ## start project
 	$(DOCKER) up --build --remove-orphans --force-recreate --detach
+	$(WORDPRESS) wpcli
 
 stop: ## stop project
 	$(DOCKER) stop

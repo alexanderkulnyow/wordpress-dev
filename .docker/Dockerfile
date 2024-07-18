@@ -36,7 +36,10 @@ RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli
 
 ADD php.d /usr/local/etc/php/conf.d/
 
+COPY --chmod=0755 wp-cli/wpcli /usr/local/bin/wpcli
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
 
 EXPOSE 9003
