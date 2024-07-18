@@ -17,7 +17,8 @@ services:
         depends_on:
             - database
         build: .docker
-        image: alexanderkulnyow/wordpress-dev
+#        image: alexanderkulnyow/wordpress-dev
+        container_name: wp-dev-container
         ports:
             - "${WORDPRESS_PORT}:80"
         environment:
@@ -36,6 +37,8 @@ services:
 
 networks:
     wp-dev-network:
+        name: wp-dev-network
 
 volumes:
     wp-dev-data:
+        name: wp-dev-data
