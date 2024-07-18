@@ -1,4 +1,5 @@
 ### Developing Docker image for WordPress Dev Env with:
+
 * Xdebug
 * php ext optimized
 * wp-cli
@@ -11,6 +12,7 @@ docker push alexanderkulnyow/wordpress-dev:latest
 ```
 
 docker-compose.yaml
+
 ```yaml 
     services:
         database:
@@ -26,7 +28,7 @@ docker-compose.yaml
                 MARIADB_RANDOM_ROOT_PASSWORD: 1
             networks:
                 - wp-dev-network
-    
+
         wordpress:
             depends_on:
                 - database
@@ -46,10 +48,22 @@ docker-compose.yaml
                 - "host.docker.internal:host-gateway"
             networks:
                 - wp-dev-network
-    
+
     networks:
         wp-dev-network:
-    
+
     volumes:
         wp-dev-data:
 ```
+
+### Files structure
+
+```bash
+.
+├── .docker
+│   ├── php.d
+│   └── wp-cli
+```
+
+**php.d** - dir with *.ini extenshions \
+**wp-cli** - dir with wp-cli scripts
