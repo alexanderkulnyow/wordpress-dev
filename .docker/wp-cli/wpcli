@@ -20,7 +20,8 @@ wp theme delete twentytwentytwo twentytwentythree --allow-root
 wp plugin deactivate hello akismet --allow-root
 wp plugin delete hello akismet --allow-root
 
-for item in ${array[*]}
+# shellcheck disable=SC2066
+for item in "${array[*]}"
 do
   wp plugin install "$item"  --activate  --allow-root
 done
