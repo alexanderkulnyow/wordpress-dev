@@ -21,25 +21,28 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
         htop \
         zip
 
-RUN pecl install "xdebug" \
-    && docker-php-ext-enable xdebug \
-    && sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf \
-    && echo 'ServerName localhost' > /etc/apache2/conf-available/fqdn.conf
+    RUN pecl install "xdebug" \
+        && docker-php-ext-enable xdebug \
+        && sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf \
+        && echo 'ServerName localhost' > /etc/apache2/conf-available/fqdn.conf
 
 
-RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
-    && php wp-cli.phar --info --allow-root \
-    && chmod +x wp-cli.phar \
-    && mv wp-cli.phar /usr/local/bin/wp \
-    && a2enconf fqdn \
-    && a2enmod rewrite expires
+    RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+        && php wp-cli.phar --info --allow-root \
+        && chmod +x wp-cli.phar \
+        && mv wp-cli.phar /usr/local/bin/wp \
+        && a2enconf fqdn \
+        && a2enmod rewrite expires
 
-ADD php.d /usr/local/etc/php/conf.d/
+    ADD php.d /usr/local/etc/php/conf.d/
 
-COPY --chmod=0755 wp-cli/wpcli /usr/local/bin/wpcli
+    COPY --chmod=0755 wp-cli/wpcli /usr/local/bin/wpcli
 
-COPY --from=composer /usr/bin/composer /usr/bin/composer
+#    COPY --chmod=0755 wp-cli/plugins.txt /var/www/html/wp-content/plugins.txt \
+#    COPY --chmod=0755 wp-cli/pluginsDev.txt /var/www/html/wp-content/pluginsDev.txt
 
-WORKDIR /var/www/html
+    COPY --from=composer /usr/bin/composer /usr/bin/composer
+
+    WORKDIR /var/www/html
 
 EXPOSE 9003

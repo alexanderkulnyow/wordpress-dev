@@ -1,0 +1,13 @@
+all-in-one-wp-security-and-firewall
+autoptimize
+contact-form-7
+easy-wp-smtp
+images-to-webp
+post-duplicator
+query-monitor
+redirection
+redis-cache
+regenerate-thumbnails
+wordpress-importer
+wordpress-seo
+wp-super-cache

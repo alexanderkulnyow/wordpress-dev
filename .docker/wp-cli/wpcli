@@ -1,28 +1,18 @@
 #!/bin/bash
 
-array=("all-in-one-wp-security-and-firewall")
-array+=("autoptimize")
-array+=("contact-form-7")
-array+=("easy-wp-smtp")
-array+=("images-to-webp")
-array+=( "post-duplicator")
-array+=( "query-monitor")
-array+=( "redirection")
-array+=( "redis-cache")
-array+=( "regenerate-thumbnails")
-array+=("wordpress-importer")
-array+=( "wordpress-seo")
-array+=("wp-super-cache")
-
-
 wp theme delete twentytwentytwo twentytwentythree --allow-root
 
 wp plugin deactivate --uninstall --all --allow-root
 
 # shellcheck disable=SC2066
-for item in "${array[*]}"
+for n in $(cat wp-content/plugins.txt)
 do
-  wp plugin install "$item"  --activate  --allow-root
+    wp plugin install "$n"  --allow-root
+done
+
+for n in $(cat wp-content/pluginsDev.txt)
+do
+    wp plugin install "$n"  --activate  --allow-root
 done
 
 wp plugin update --all --allow-root
