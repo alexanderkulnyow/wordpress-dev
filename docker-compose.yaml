@@ -1,5 +1,5 @@
-x-network: &network dev-network
-x-wp-data: &wp-data wp-dev-data
+x-network: &network ${PROJECT_NAME}-network
+x-wp-data: &wp-data ${PROJECT_NAME}-data
 
 networks:
     wp-network:
@@ -29,7 +29,7 @@ services:
             - database
         build: .docker
 #        image: alexanderkulnyow/wordpress-dev
-        container_name: wp-dev-container
+        container_name: "${PROJECT_NAME}-container"
         ports:
             - "${WORDPRESS_PORT}:80"
         environment:
