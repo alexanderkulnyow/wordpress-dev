@@ -1,43 +1,33 @@
 #!/bin/bash
 
-array=("all-in-one-wp-security-and-firewall")
-array+=("autoptimize")
-array+=("contact-form-7")
-array+=("easy-wp-smtp")
-array+=("images-to-webp")
-array+=( "post-duplicator")
-array+=( "query-monitor")
-array+=( "redirection")
-array+=( "redis-cache")
-array+=( "regenerate-thumbnails")
-array+=("wordpress-importer")
-array+=( "wordpress-seo")
-array+=("wp-super-cache")
-
-
 wp theme delete twentytwentytwo twentytwentythree --allow-root
 
-wp plugin deactivate hello akismet --allow-root
-wp plugin delete hello akismet --allow-root
+wp plugin deactivate --uninstall --all --allow-root
 
 # shellcheck disable=SC2066
-for item in "${array[*]}"
+for n in $(cat wp-content/plugins.txt)
 do
-  wp plugin install "$item"  --activate  --allow-root
+    wp plugin install "$n"  --allow-root
+done
+
+for n in $(cat wp-content/pluginsDev.txt)
+do
+    wp plugin install "$n"  --activate  --allow-root
 done
 
 wp plugin update --all --allow-root
 
 
 
-DIR_EXAMPLE="./wp-content"
+DIR="./wp-content"
 USER=www-data
 GROUP=www-data
-USER_ID=$(stat -c '%u' ${DIR_EXAMPLE})
-GROUP_ID=$(stat -c '%g' ${DIR_EXAMPLE})
+USER_ID=$(stat -c '%u' ${DIR})
+GROUP_ID=$(stat -c '%g' ${DIR})
 
-echo ${USER_ID} > /root/uid
-echo ${GROUP_ID} > /root/gid
-usermod -u ${USER_ID} ${USER}
-groupmod -g ${GROUP_ID} ${GROUP}
-chown -R ${USER}:${GROUP} ${WORKDIR}/var
+echo "${USER_ID}" > /root/uid
+echo "${GROUP_ID}" > /root/gid
+usermod -u "${USER_ID}" ${USER}
+groupmod -g "${GROUP_ID}" ${GROUP}
+chown -R ${USER}:${GROUP} ./
+chmod -R 775 ./wp-content

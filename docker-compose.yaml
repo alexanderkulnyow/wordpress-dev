@@ -1,3 +1,11 @@
+networks:
+    wp-network:
+        name: ${PROJECT_NAME}-network
+
+volumes:
+    wp-data:
+        name: ${PROJECT_NAME}-data
+
 services:
     database:
         image: mariadb:10.11
@@ -11,14 +19,13 @@ services:
             MARIADB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
             MARIADB_RANDOM_ROOT_PASSWORD: 1
         networks:
-            - wp-dev-network
+            - wp-network
 
     wordpress:
         depends_on:
             - database
         build: .docker
-#        image: alexanderkulnyow/wordpress-dev
-        container_name: wp-dev-container
+        container_name: "${PROJECT_NAME}-container"
         ports:
             - "${WORDPRESS_PORT}:80"
         environment:
@@ -28,17 +35,10 @@ services:
             WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME}
             WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX}
         volumes:
-            - wp-dev-data:/var/www/html/
+            - wp-data:/var/www/html/
+            - ./wp-content:/var/www/html/wp-content/
             - ./var/log:/var/log/apache2
         extra_hosts:
             - "host.docker.internal:host-gateway"
         networks:
-            - wp-dev-network
-
-networks:
-    wp-dev-network:
-        name: wp-dev-network
-
-volumes:
-    wp-dev-data:
-        name: wp-dev-data
+            - wp-network
