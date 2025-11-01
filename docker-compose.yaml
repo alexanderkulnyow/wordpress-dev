@@ -1,13 +1,10 @@
-x-network: &network ${PROJECT_NAME}-network
-x-wp-data: &wp-data ${PROJECT_NAME}-data
-
 networks:
     wp-network:
-        name: *network
+        name: ${PROJECT_NAME}-network
 
 volumes:
     wp-data:
-        name: *wp-data
+        name: ${PROJECT_NAME}-data
 
 services:
     database:
@@ -28,7 +25,6 @@ services:
         depends_on:
             - database
         build: .docker
-#        image: alexanderkulnyow/wordpress-dev
         container_name: "${PROJECT_NAME}-container"
         ports:
             - "${WORDPRESS_PORT}:80"
