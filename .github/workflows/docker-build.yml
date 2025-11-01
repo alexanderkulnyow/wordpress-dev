@@ -40,7 +40,7 @@ jobs:
           context: .docker
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
-            alexanderkulnyow/wordpress-dev-wordpress:latest
-            alexanderkulnyow/wordpress-dev-wordpress:${{ github.sha }}
+            alexanderkulnyow/wordpress-dev:latest
+            alexanderkulnyow/wordpress-dev:${{ github.sha }}
             ghcr.io/alexanderkulnyow/wordpress-dev:latest
             ghcr.io/alexanderkulnyow/wordpress-dev:${{ github.sha }}
