@@ -1,0 +1,17 @@
+#!/bin/bash
+# Enable or disable Xdebug based on ENV variable
+if [ "$XDEBUG" = "true" ]; then
+    echo "Enabling Xdebug..."
+    sed -i 's/^;zend_extension/zend_extension/' /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+    {
+        echo "xdebug.mode=develop,debug"
+        echo "xdebug.client_host=host.docker.internal"
+        echo "xdebug.remote_enable=1"
+        echo "xdebug.idekey=PHPSTORM"
+        echo "xdebug.client_port=9003"
+    } >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+else
+    echo "Xdebug is disabled."
+fi
+
+exec "$@"

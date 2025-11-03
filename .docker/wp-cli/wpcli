@@ -1,33 +1,118 @@
 #!/bin/bash
 
-wp theme delete twentytwentytwo twentytwentythree --allow-root
+# Path to the plugin list file
+PLUGIN_LIST="/var/www/html/commands/plugins/plugins.txt"
 
-wp plugin deactivate --uninstall --all --allow-root
+# Function to display error messages and exit
+function error_exit {
+    echo "Error: $1"
+    exit 1
+}
 
-# shellcheck disable=SC2066
-for n in $(cat wp-content/plugins.txt)
-do
-    wp plugin install "$n"  --allow-root
-done
+# Function to check line endings (CRLF -> LF)
+function convert_line_endings {
+    if file "$PLUGIN_LIST" | grep -q "with CRLF line terminators"; then
+        echo "The file uses CRLF. Converting to LF..."
+        sed -i 's/\r$//' "$PLUGIN_LIST"
+        echo "Conversion completed. The file is now in LF format."
+    else
+        echo "The file already uses LF."
+    fi
+}
 
-for n in $(cat wp-content/pluginsDev.txt)
-do
-    wp plugin install "$n"  --activate  --allow-root
-done
+# Function to install plugins
+function install_plugins {
+    echo "Starting installation of plugins from the list..."
+    while IFS= read -r plugin; do
+        if [ -n "$plugin" ]; then
+            if wp plugin is-installed "$plugin" --allow-root; then
+                echo "Plugin $plugin is already installed."
+            else
+                echo "Installing plugin: $plugin"
+                wp plugin install "$plugin" --activate --allow-root || error_exit "Error installing plugin: $plugin"
+            fi
+        fi
+    done < "$PLUGIN_LIST"
+}
 
-wp plugin update --all --allow-root
+# Function to remove plugins
+function remove_plugins {
+    REMOVE_PLUGINS=("akismet" "hello")
 
+    echo "Checking and removing plugins: ${REMOVE_PLUGINS[*]}"
 
+    for plugin in "${REMOVE_PLUGINS[@]}"; do
+        if wp plugin is-installed "$plugin" --allow-root; then
+            echo "Plugin $plugin found. Deactivating and removing..."
+            wp plugin deactivate "$plugin" --allow-root || { echo "Error deactivating plugin $plugin"; exit 1; }
+            wp plugin delete "$plugin" --allow-root ||  { echo "Error removing plugin $plugin"; exit 1; }
+        else
+            echo "Plugin $plugin not found. Skipping..."
+        fi
+    done
+}
+function deactivate_plugins {
+    REMOVE_PLUGINS=("wps-hide-login")
 
-DIR="./wp-content"
-USER=www-data
-GROUP=www-data
-USER_ID=$(stat -c '%u' ${DIR})
-GROUP_ID=$(stat -c '%g' ${DIR})
+    echo "Checking and removing plugins: ${REMOVE_PLUGINS[*]}"
 
-echo "${USER_ID}" > /root/uid
-echo "${GROUP_ID}" > /root/gid
-usermod -u "${USER_ID}" ${USER}
-groupmod -g "${GROUP_ID}" ${GROUP}
-chown -R ${USER}:${GROUP} ./
-chmod -R 775 ./wp-content
+    for plugin in "${REMOVE_PLUGINS[@]}"; do
+        if wp plugin is-installed "$plugin" --allow-root; then
+            echo "Plugin $plugin found. Deactivating and removing..."
+            wp plugin deactivate "$plugin" --allow-root || { echo "Error deactivating plugin $plugin"; exit 1; }
+            wp plugin delete "$plugin" --allow-root ||  { echo "Error removing plugin $plugin"; exit 1; }
+        else
+            echo "Plugin $plugin not found. Skipping..."
+        fi
+    done
+}
+
+# Function to remove themes starting with "twenty"
+function remove_twenty_themes {
+    echo "Starting to remove themes starting with 'twenty'..."
+
+    # Get a list of all themes starting with "twenty"
+    themes_to_remove=$(wp theme list --allow-root --fields=name --status=all | grep -i '^twenty' | tr '\n' ' ')
+
+    if [ -n "$themes_to_remove" ]; then
+        for theme in $themes_to_remove; do
+            # Check if the theme is active before removing
+            if [ "$(wp theme is-active $theme --allow-root)" = "true" ]; then
+                echo "Theme $theme is active. Switching to the default theme..."
+                wp theme activate twentyfifteen --allow-root || error_exit "Error activating theme twentyfifteen."
+            fi
+            # Remove the theme
+            echo "Removing theme $theme..."
+            wp theme delete $theme --allow-root || error_exit "Error removing theme $theme."
+        done
+    else
+        echo "No themes starting with 'twenty' found."
+    fi
+}
+
+# Main function
+function main {
+    # Check if the plugin list file exists
+    if [ ! -f "$PLUGIN_LIST" ]; then
+        error_exit "Plugin list file not found: $PLUGIN_LIST"
+    fi
+
+    # Convert the plugin list file to LF line endings
+    convert_line_endings
+
+    # Install plugins from the file
+    install_plugins
+
+    # Remove unnecessary plugins
+    remove_plugins
+
+    # Deactivate unnecessary plugins
+		deactivate_plugins
+    # Remove themes starting with 'twenty'
+#    remove_twenty_themes
+
+    echo "Process completed successfully."
+}
+
+# Run the main function
+main

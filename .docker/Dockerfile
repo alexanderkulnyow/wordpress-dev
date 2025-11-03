@@ -34,15 +34,20 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
         && a2enconf fqdn \
         && a2enmod rewrite expires
 
-    ADD php.d /usr/local/etc/php/conf.d/
+    COPY --chmod=0755 bin/ /usr/local/bin/
 
-    COPY --chmod=0755 wp-cli/wpcli /usr/local/bin/wpcli
-
-#    COPY --chmod=0755 wp-cli/plugins.txt /var/www/html/wp-content/plugins.txt \
-#    COPY --chmod=0755 wp-cli/pluginsDev.txt /var/www/html/wp-content/pluginsDev.txt
+    COPY php.d /usr/local/etc/php/conf.d/
 
     COPY --from=composer /usr/bin/composer /usr/bin/composer
 
-    WORKDIR /var/www/html
+	RUN wp package install wp-cli/doctor-command:@stable --allow-root
 
-EXPOSE 9003
+    COPY --chmod=0755 wp-cli/wpcli /var/www/html/commands/
+
+    COPY --chmod=0755 plugins /var/www/html/commands/plugins/
+
+  	RUN sed -i 's/\r$//' /var/www/html/commands/wpcli \
+  		&& sed -i 's/\r$//' /usr/local/bin/phpdxdebug \
+    	&& phpdxdebug
+
+WORKDIR /var/www/html
