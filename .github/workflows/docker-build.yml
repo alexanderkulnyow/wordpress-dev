@@ -39,6 +39,7 @@ jobs:
         with:
           context: .docker
           push: ${{ github.ref == 'refs/heads/main' }}
+          platforms: linux/amd64,linux/arm64/v8
           tags: |
             alexanderkulnyow/wordpress-dev:latest
             alexanderkulnyow/wordpress-dev:${{ github.sha }}
