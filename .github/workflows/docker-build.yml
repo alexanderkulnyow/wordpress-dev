@@ -34,14 +34,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Build and push Docker prod image
         uses: docker/build-push-action@v6
         with:
           context: .docker
           push: ${{ github.ref == 'refs/heads/main' }}
           platforms: linux/amd64,linux/arm64/v8
+          build-args: |
+              APP_ENV=prod
           tags: |
-            alexanderkulnyow/wordpress-dev:latest
-            alexanderkulnyow/wordpress-dev:${{ github.sha }}
-            ghcr.io/alexanderkulnyow/wordpress-dev:latest
-            ghcr.io/alexanderkulnyow/wordpress-dev:${{ github.sha }}
+            alexanderkulnyow/wordpress-prod:latest
+            alexanderkulnyow/wordpress-prod:${{ github.sha }}
+            ghcr.io/alexanderkulnyow/wordpress-prod:latest
+            ghcr.io/alexanderkulnyow/wordpress-prod:${{ github.sha }}
+
+      - name: Build and push Docker dev image
+        uses: docker/build-push-action@v6
+        with:
+            context: .docker
+            push: ${{ github.ref == 'refs/heads/main' }}
+            platforms: linux/amd64,linux/arm64/v8
+            build-args: |
+                APP_ENV=dev
+            tags: |
+                alexanderkulnyow/wordpress-dev:latest
+                alexanderkulnyow/wordpress-dev:${{ github.sha }}
+                ghcr.io/alexanderkulnyow/wordpress-dev:latest
+                ghcr.io/alexanderkulnyow/wordpress-dev:${{ github.sha }}
