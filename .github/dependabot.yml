@@ -1,10 +1,28 @@
 version: 2
 updates:
   - package-ecosystem: "docker"
-    directory: ".docker"
+    directory: "/.docker/apache"
     schedule:
       interval: "weekly"
       day: "monday"
     commit-message:
       prefix: "deps(docker):"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "wordpress"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+  - package-ecosystem: "docker"
+    directory: "/.docker/apache-fpm"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(docker):"
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "php"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"

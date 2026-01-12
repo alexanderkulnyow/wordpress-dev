@@ -1,0 +1,51 @@
+<?php
+
+if (!function_exists('wordpress_env')) {
+    function wordpress_env(string $name, string $default = ''): string
+    {
+        $file = getenv($name . '_FILE');
+        if ($file !== false && $file !== '') {
+            $value = file_get_contents($file);
+            if ($value === false) {
+                throw new RuntimeException('Cannot read secret file for ' . $name);
+            }
+            return rtrim($value, "\r\n");
+        }
+
+        $value = getenv($name);
+        return $value === false ? $default : $value;
+    }
+}
+
+define('DB_NAME', wordpress_env('WORDPRESS_DB_NAME', 'wordpress'));
+define('DB_USER', wordpress_env('WORDPRESS_DB_USER', 'wordpress'));
+define('DB_PASSWORD', wordpress_env('WORDPRESS_DB_PASSWORD'));
+define('DB_HOST', wordpress_env('WORDPRESS_DB_HOST', 'database'));
+define('DB_CHARSET', wordpress_env('WORDPRESS_DB_CHARSET', 'utf8mb4'));
+define('DB_COLLATE', wordpress_env('WORDPRESS_DB_COLLATE'));
+
+define('AUTH_KEY', wordpress_env('WORDPRESS_AUTH_KEY', '__WORDPRESS_AUTH_KEY__'));
+define('SECURE_AUTH_KEY', wordpress_env('WORDPRESS_SECURE_AUTH_KEY', '__WORDPRESS_SECURE_AUTH_KEY__'));
+define('LOGGED_IN_KEY', wordpress_env('WORDPRESS_LOGGED_IN_KEY', '__WORDPRESS_LOGGED_IN_KEY__'));
+define('NONCE_KEY', wordpress_env('WORDPRESS_NONCE_KEY', '__WORDPRESS_NONCE_KEY__'));
+define('AUTH_SALT', wordpress_env('WORDPRESS_AUTH_SALT', '__WORDPRESS_AUTH_SALT__'));
+define('SECURE_AUTH_SALT', wordpress_env('WORDPRESS_SECURE_AUTH_SALT', '__WORDPRESS_SECURE_AUTH_SALT__'));
+define('LOGGED_IN_SALT', wordpress_env('WORDPRESS_LOGGED_IN_SALT', '__WORDPRESS_LOGGED_IN_SALT__'));
+define('NONCE_SALT', wordpress_env('WORDPRESS_NONCE_SALT', '__WORDPRESS_NONCE_SALT__'));
+
+$table_prefix = wordpress_env('WORDPRESS_TABLE_PREFIX', 'wp_');
+define('WP_DEBUG', (bool) wordpress_env('WORDPRESS_DEBUG', '0'));
+
+if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strpos($_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !== false) {
+    $_SERVER['HTTPS'] = 'on';
+}
+
+$extra = wordpress_env('WORDPRESS_CONFIG_EXTRA');
+if ($extra !== '') {
+    eval($extra);
+}
+
+if (!defined('ABSPATH')) {
+    define('ABSPATH', __DIR__ . '/');
+}
+require_once ABSPATH . 'wp-settings.php';

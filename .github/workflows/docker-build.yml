@@ -16,32 +16,83 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+      - name: Build and push Docker prod image
+        uses: docker/build-push-action@v7
         with:
-          context: .docker
-          push: ${{ github.ref == 'refs/heads/main' }}
+          context: .docker/apache
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           platforms: linux/amd64,linux/arm64/v8
+          build-args: |
+              APP_ENV=prod
           tags: |
-            alexanderkulnyow/wordpress-dev:latest
-            alexanderkulnyow/wordpress-dev:${{ github.sha }}
-            ghcr.io/alexanderkulnyow/wordpress-dev:latest
-            ghcr.io/alexanderkulnyow/wordpress-dev:${{ github.sha }}
+            alexanderkulnyow/wordpress-prod:latest
+            alexanderkulnyow/wordpress-prod:${{ github.sha }}
+            ghcr.io/alexanderkulnyow/wordpress-prod:latest
+            ghcr.io/alexanderkulnyow/wordpress-prod:${{ github.sha }}
+
+      - name: Build and push Docker dev image
+        uses: docker/build-push-action@v7
+        with:
+            context: .docker/apache
+            push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+            platforms: linux/amd64,linux/arm64/v8
+            build-args: |
+                APP_ENV=dev
+            tags: |
+                alexanderkulnyow/wordpress-dev:latest
+                alexanderkulnyow/wordpress-dev:${{ github.sha }}
+                ghcr.io/alexanderkulnyow/wordpress-dev:latest
+                ghcr.io/alexanderkulnyow/wordpress-dev:${{ github.sha }}
+
+      - name: Build and push Apache + FPM prod image
+        uses: docker/build-push-action@v7
+        with:
+          context: .docker/apache-fpm
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          platforms: linux/amd64,linux/arm64/v8
+          build-args: |
+            APP_ENV=prod
+          tags: |
+            alexanderkulnyow/wordpress-apache-fpm-prod:latest
+            alexanderkulnyow/wordpress-apache-fpm-prod:${{ github.sha }}
+            ghcr.io/alexanderkulnyow/wordpress-apache-fpm-prod:latest
+            ghcr.io/alexanderkulnyow/wordpress-apache-fpm-prod:${{ github.sha }}
+
+      - name: Build and push Apache + FPM dev image
+        uses: docker/build-push-action@v7
+        with:
+          context: .docker/apache-fpm
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          platforms: linux/amd64,linux/arm64/v8
+          build-args: |
+            APP_ENV=dev
+          tags: |
+            alexanderkulnyow/wordpress-apache-fpm-dev:latest
+            alexanderkulnyow/wordpress-apache-fpm-dev:${{ github.sha }}
+            ghcr.io/alexanderkulnyow/wordpress-apache-fpm-dev:latest
+            ghcr.io/alexanderkulnyow/wordpress-apache-fpm-dev:${{ github.sha }}
