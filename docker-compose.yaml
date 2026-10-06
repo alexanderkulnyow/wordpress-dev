@@ -29,7 +29,7 @@ services:
             - database
         build:
             context: .docker
-            dockerfile: appache.Dockerfile
+            dockerfile: Dockerfile
             args:
                 APP_ENV: ${APP_ENV:-dev} # dev | prod
         container_name: "${PROJECT_NAME}-wordpress"
