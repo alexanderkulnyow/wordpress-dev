@@ -1,0 +1,12 @@
+#!/bin/bash
+# Replaces WP's HTTP-triggered pseudo-cron (disabled via WORDPRESS_CONFIG_EXTRA
+# setting DISABLE_WP_CRON) with a real interval-based runner.
+set -u
+
+INTERVAL="${WP_CRON_INTERVAL:-60}"
+WP_PATH="/var/www/html"
+
+while true; do
+    wp cron event run --due-now --path="$WP_PATH" --allow-root --quiet
+    sleep "$INTERVAL"
+done

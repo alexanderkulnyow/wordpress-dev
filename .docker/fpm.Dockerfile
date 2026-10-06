@@ -1,6 +1,6 @@
 FROM composer:latest AS composer
 
-FROM wordpress:latest
+FROM wordpress:php8.4-fpm
 
 ARG APP_ENV=prod
 ENV APP_ENV=${APP_ENV}
@@ -19,7 +19,6 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
         libzip-dev \
         mariadb-client \
         sudo \
-        supervisor \
         unzip \
         nano \
         htop \
@@ -28,21 +27,15 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
     RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
         && php wp-cli.phar --info --allow-root \
         && chmod +x wp-cli.phar \
-        && mv wp-cli.phar /usr/local/bin/wp \
-        && sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf \
-        && echo 'ServerName localhost' > /etc/apache2/conf-available/fqdn.conf \
-        && a2enconf fqdn \
-        && a2enmod rewrite expires
+        && mv wp-cli.phar /usr/local/bin/wp
 
     COPY --chmod=0755 bin/ /usr/local/bin/
-
-    COPY --chmod=0644 supervisor/wordpress.conf /etc/supervisor/conf.d/wordpress.conf
 
     COPY php.d /usr/local/etc/php/conf.d/
 
     COPY --from=composer /usr/bin/composer /usr/bin/composer
 
-	RUN wp package install wp-cli/doctor-command:^2.0 --allow-root
+	RUN wp package install wp-cli/doctor-command:@stable --allow-root
 
     COPY --chmod=0755 wp-cli/wpcli /var/www/html/commands/
 
@@ -61,7 +54,3 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
         fi
 
 WORKDIR /var/www/html
-
-# Name starts with "apache2" on purpose: the base image's docker-entrypoint.sh only runs its
-# wp-config.php/WORDPRESS_* setup when $1 matches "apache2*", before exec'ing into this wrapper.
-CMD ["apache2-foreground-supervised"]

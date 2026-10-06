@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Path to the plugin list file
+# Path to the baked-in default plugin list file (used when WORDPRESS_PLUGINS is not set)
 PLUGIN_LIST="/var/www/html/commands/plugins/plugins.txt"
 
 # Function to display error messages and exit
@@ -20,9 +20,23 @@ function convert_line_endings {
     fi
 }
 
+# Function to output the plugin slugs to install, one per line.
+# Prefers the WORDPRESS_PLUGINS env var (comma-separated) over the baked-in plugins.txt file.
+function get_plugin_list {
+    if [ -n "${WORDPRESS_PLUGINS:-}" ]; then
+        echo "$WORDPRESS_PLUGINS" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+    else
+        if [ ! -f "$PLUGIN_LIST" ]; then
+            error_exit "Plugin list file not found: $PLUGIN_LIST"
+        fi
+        convert_line_endings
+        cat "$PLUGIN_LIST"
+    fi
+}
+
 # Function to install plugins
 function install_plugins {
-    echo "Starting installation of plugins from the list..."
+    echo "Starting installation of plugins..."
     while IFS= read -r plugin; do
         if [ -n "$plugin" ]; then
             if wp plugin is-installed "$plugin" --allow-root; then
@@ -32,7 +46,7 @@ function install_plugins {
                 wp plugin install "$plugin" --activate --allow-root || error_exit "Error installing plugin: $plugin"
             fi
         fi
-    done < "$PLUGIN_LIST"
+    done < <(get_plugin_list)
 }
 
 # Function to remove plugins
@@ -92,15 +106,7 @@ function remove_twenty_themes {
 
 # Main function
 function main {
-    # Check if the plugin list file exists
-    if [ ! -f "$PLUGIN_LIST" ]; then
-        error_exit "Plugin list file not found: $PLUGIN_LIST"
-    fi
-
-    # Convert the plugin list file to LF line endings
-    convert_line_endings
-
-    # Install plugins from the file
+    # Install plugins (from WORDPRESS_PLUGINS env var, or the baked-in plugin list file)
     install_plugins
 
     # Remove unnecessary plugins
