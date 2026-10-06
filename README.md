@@ -9,7 +9,7 @@ Published as:
 * [`alexanderkulnyow/wordpress-dev`](https://hub.docker.com/repository/docker/alexanderkulnyow/wordpress-dev/general) / `ghcr.io/alexanderkulnyow/wordpress-dev` — built with `APP_ENV=dev` (adds Xdebug)
 * `alexanderkulnyow/wordpress-prod` / `ghcr.io/alexanderkulnyow/wordpress-prod` — built with `APP_ENV=prod` (no Xdebug)
 
-Both tags are built from the same [`.docker/appache.Dockerfile`](.docker/appache.Dockerfile) by
+Both tags are built from the same [`.docker/Dockerfile`](.docker/Dockerfile) by
 [`.github/workflows/docker-build.yml`](.github/workflows/docker-build.yml) on every push/PR to `main`.
 
 This repository's [`docker-compose.yaml`](docker-compose.yaml) + `.env` are **local dev tooling only**.
@@ -80,6 +80,12 @@ The plugin list baked into the image at **build time** (one slug per line), used
 contact-form-7
 ```
 
+The provisioning script and plugin list live in `/usr/local/share/wordpress/commands`, outside the
+site data directory, so mounting `/var/www/html` does not hide them.
+When provisioning runs as root, it gives selected plugins and existing upgrade work directories to
+the web-server user/group (`APACHE_RUN_USER` / `APACHE_RUN_GROUP`, default `www-data`) so WordPress can
+update them. This also repairs ownership of selected plugins that are already installed.
+
 Don't confuse this with `.docker/wp-cli/plugins.txt` / `pluginsDev.txt` — those are stale, unused leftovers
 in the same directory tree and aren't read by anything.
 
@@ -93,7 +99,7 @@ in the same directory tree and aren't read by anything.
 | `WORDPRESS_CONFIG_EXTRA` | `define('DISABLE_WP_CRON', true);` (set in `docker-compose.yaml`) | Raw PHP appended to `wp-config.php`. Set this when running the image outside this repo's compose too, so WP's pseudo-cron stays off in favor of the real one below. |
 | `WORDPRESS_PLUGINS` | _(empty → falls back to `.docker/plugins/plugins.txt`)_ | Comma-separated plugin slugs to install/activate on startup. |
 | `WP_CRON_INTERVAL` | `60` | Seconds between `wp cron event run --due-now` calls. |
-| `XDEBUG` | `false` | Enables Xdebug in the `dev` build variant only (no-op in `prod`, since Xdebug isn't installed there). |
+| `XDEBUG` | `false` | `true` loads Xdebug when a `dev` container starts; `false` or unset leaves the extension unloaded. No-op in `prod`, where Xdebug isn't installed. |
 | `APP_ENV` (build-arg, not runtime env) | `dev` | `dev` installs Xdebug at build time; `prod` doesn't. Set via `docker-compose.yaml`'s `build.args` or `--build-arg` directly. |
 
 ### Local dev compose only (`docker-compose.yaml` / `.env` in this repo)
@@ -110,8 +116,9 @@ in the same directory tree and aren't read by anything.
 
 The image's `CMD` doesn't run bare Apache — it runs `supervisord`
 ([`.docker/supervisor/wordpress.conf`](.docker/supervisor/wordpress.conf)), managing three processes.
-This still goes through the official `wordpress` base image's `docker-entrypoint.sh` first (which
-generates `wp-config.php` from the `WORDPRESS_*` vars and copies in WordPress core on first boot) —
+The `phpdxdebug` entrypoint applies `XDEBUG`, then runs the official `wordpress` base image's
+`docker-entrypoint.sh` (which generates `wp-config.php` from the `WORDPRESS_*` vars and copies in
+WordPress core on first boot) —
 our `CMD` is literally named `apache2-foreground-supervised` so it still matches that entrypoint's
 `apache2*` guard before taking over.
 
@@ -138,7 +145,7 @@ Run `make help` for the authoritative list (parsed from the `##` comments). Nota
 * `make postexport` / `make postimport` — wp-cli export/import against `data/export/test.xml`.
 * `make user` — creates a WordPress user via wp-cli (currently hardcoded to `admin`/`admin`, administrator role — **change the password before using this against anything but a disposable local site**).
 * `docker-compose exec wordpress wp <command> --allow-root` — run arbitrary wp-cli commands directly.
-* `docker-compose exec wordpress bash /var/www/html/commands/wpcli` — run the provisioning script manually (same thing `wp-provision` runs automatically).
+* `docker-compose exec wordpress bash /usr/local/share/wordpress/commands/wpcli` — run the provisioning script manually (same thing `wp-provision` runs automatically).
 
 Known broken targets (pre-existing, not specific to this doc): `make composer` references an undefined
 `$(COMPOSER)` variable; `make style` / `make blocks` call `npm run ...` but there's no `package.json`
@@ -150,9 +157,8 @@ under `wp-content/`.
 * **`.docker/fpm.Dockerfile`** (php-fpm base variant) exists but isn't wired into `docker-compose.yaml`
   or the CI workflow — neither is built/published anywhere today. Treat it as a dormant starting point
   for a future nginx+fpm setup, not something currently in use in dev or prod.
-* **`wp-cli/doctor-command` version is pinned to `^2.0`** in `appache.Dockerfile` (was `@stable`, which
-  started resolving to `v3.0.0` — a version requiring wp-cli `^3.0`, incompatible with the `2.12.0`
-  wp-cli.phar this image currently installs). If you bump the wp-cli.phar source, revisit this pin.
-  Composer's package install also talks to the GitHub API unauthenticated at build time and can hit
-  rate limits on repeated builds from the same IP.
+* **WP-CLI is pinned to `2.12.0` and `wp-cli/doctor-command` to `2.3.1`** in both Dockerfiles.
+  Doctor `2.3.1` is compatible with this stable WP-CLI release; newer Doctor releases require newer
+  WP-CLI versions. Update these pins together. Doctor is installed from its tagged source archive
+  as a local Composer path repository, avoiding GitHub API calls to discover Doctor versions.
 * There is no test suite, linter, or composer project in this repo to run.

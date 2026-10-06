@@ -12,4 +12,4 @@ until wp core is-installed --allow-root --path="$WP_PATH" >/dev/null 2>&1; do
 done
 
 echo "wp-provision: WordPress is installed, running provisioning..."
-bash /var/www/html/commands/wpcli
+bash /usr/local/share/wordpress/commands/wpcli
