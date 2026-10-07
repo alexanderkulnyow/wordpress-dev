@@ -52,8 +52,6 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
 
     COPY --chmod=0755 wp-cli/wpcli /usr/local/share/wordpress/commands/
 
-    COPY --chmod=0755 plugins /usr/local/share/wordpress/commands/plugins/
-
     RUN sed -i 's/\r$//' /usr/local/share/wordpress/commands/wpcli
 
     RUN if [ "$APP_ENV" = "dev" ]; then \

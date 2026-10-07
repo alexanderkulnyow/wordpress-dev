@@ -44,7 +44,7 @@ services:
             WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX}
             XDEBUG: ${XDEBUG:-false}
             WORDPRESS_CONFIG_EXTRA: "define('DISABLE_WP_CRON', true);"
-            WORDPRESS_PLUGINS: ${WORDPRESS_PLUGINS:-}
+            WORDPRESS_PLUGINS: ${WORDPRESS_PLUGINS-contact-form-7}
             WP_CRON_INTERVAL: ${WP_CRON_INTERVAL:-60}
         volumes:
             - wp-data:/var/www/html/
