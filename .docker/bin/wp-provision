@@ -1,0 +1,15 @@
+#!/bin/bash
+# Waits for WordPress to finish installation (core tables present), then runs
+# the baked-in provisioning script once (plugin install/cleanup). Safe to run
+# on every container start: the provisioning script only acts on what's missing.
+set -u
+
+WP_PATH="/var/www/html"
+
+echo "wp-provision: waiting for WordPress to be installed..."
+until wp core is-installed --allow-root --path="$WP_PATH" >/dev/null 2>&1; do
+    sleep 5
+done
+
+echo "wp-provision: WordPress is installed, running provisioning..."
+bash /usr/local/share/wordpress/commands/wpcli

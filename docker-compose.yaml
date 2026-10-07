@@ -9,6 +9,7 @@ volumes:
 services:
     database:
         image: mariadb:10.11
+        container_name: "${PROJECT_NAME}-database"
         volumes:
             - .docker/dbData:/var/lib/mysql
         ports:
@@ -20,15 +21,18 @@ services:
             MARIADB_RANDOM_ROOT_PASSWORD: 1
         networks:
             - wp-network
+        mem_limit: ${DB_MEM_LIMIT:-512m}
+        cpus: ${DB_CPUS:-1}
 
     wordpress:
         depends_on:
             - database
         build:
             context: .docker
+            dockerfile: Dockerfile
             args:
                 APP_ENV: ${APP_ENV:-dev} # dev | prod
-        container_name: "${PROJECT_NAME}-container"
+        container_name: "${PROJECT_NAME}-wordpress"
         ports:
             - "${WORDPRESS_PORT}:80"
             - "9003:9003" #is dev
@@ -39,6 +43,9 @@ services:
             WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME}
             WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX}
             XDEBUG: ${XDEBUG:-false}
+            WORDPRESS_CONFIG_EXTRA: "define('DISABLE_WP_CRON', true);"
+            WORDPRESS_PLUGINS: ${WORDPRESS_PLUGINS:-}
+            WP_CRON_INTERVAL: ${WP_CRON_INTERVAL:-60}
         volumes:
             - wp-data:/var/www/html/
             - ./wp-content:/var/www/html/wp-content/
@@ -47,3 +54,5 @@ services:
             - "host.docker.internal:host-gateway"
         networks:
             - wp-network
+        mem_limit: ${WORDPRESS_MEM_LIMIT:-1g}
+        cpus: ${WORDPRESS_CPUS:-2}

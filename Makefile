@@ -44,6 +44,9 @@ blocks:
 	#npm run lint:scss
 	npm run build
 
+user:
+	$(WORDPRESS) wp user create admin admin@gmail.com --role=administrator --user_pass=admin --allow-root
+
 .PHONY: check php-cs-fixer phpstan phpmd lint-yaml phpunit validate
 
 #
