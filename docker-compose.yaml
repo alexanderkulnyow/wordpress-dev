@@ -22,6 +22,8 @@ services:
         cpus: ${DB_CPUS:-1}
         networks:
             - wp-network
+        mem_limit: ${DB_MEM_LIMIT:-512m}
+        cpus: ${DB_CPUS:-1}
 
     wordpress:
         image: ${IMAGE_REGISTRY:-docker.io}/alexanderkulnyow/wordpress-${APP_ENV:-dev}:${IMAGE_TAG:-latest}
@@ -55,3 +57,5 @@ services:
         cpus: ${WORDPRESS_CPUS:-2}
         networks:
             - wp-network
+        mem_limit: ${WORDPRESS_MEM_LIMIT:-1g}
+        cpus: ${WORDPRESS_CPUS:-2}
