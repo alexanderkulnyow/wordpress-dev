@@ -1,4 +1,7 @@
 #!/bin/bash
 set -e
 
+wp-runtime-init
+export WP_CRON_USER="${APACHE_RUN_USER:-www-data}"
+WP_CRON_USER="${WP_CRON_USER#\#}"
 exec supervisord -n -c /etc/supervisor/supervisord.conf

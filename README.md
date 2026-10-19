@@ -168,6 +168,45 @@ The Apache Compose files and the FPM image default disable WordPress's HTTP-trig
 cron with `define('DISABLE_WP_CRON', true);`. Retain that setting if overriding
 `WORDPRESS_CONFIG_EXTRA`; when running the mod_php image directly, supply it yourself.
 
+### Defaults for new installations
+
+After a fresh WordPress installation, provisioning uses WP-CLI to set
+`default_comment_status=closed` and `users_can_register=0`. You can change these
+later in **Settings → Discussion** and **Settings → General**. Existing posts
+keep their individual comment settings.
+
+An installation hook marks new sites, including web-installer and WP-CLI
+installations. The marker is removed after the settings are applied. Existing
+sites have no marker and retain their settings; container restarts and image
+updates do not reset administrator changes.
+
+### Nightly WP Doctor
+
+Provisioning schedules the `wordpress_docker_doctor` WordPress cron event for
+**03:00 in the site's timezone**. It runs once per day through the existing
+`wp-cron` worker, including on existing sites. Timezone changes reschedule the
+event; restarts retain its schedule. If the site is down overnight, WordPress
+cron runs the overdue event when the worker returns.
+
+The event executes `wp doctor check --all` with Doctor's bundled standard
+configuration. The full output, timestamps and exit code are appended to
+**`wp-content/wp-doctor.log`**, independently of `WP_DEBUG_LOG`. Doctor findings
+are logged without stopping the cron worker. Apache denies HTTP access to this
+file in both image variants.
+
+Startup prepares this log for the web user without changing ownership of the
+whole `wp-content` directory, including when it is a host bind-mount.
+Read it from the container:
+
+```bash
+docker compose exec wordpress tail -n 100 wp-content/wp-doctor.log
+```
+
+Both runtimes install the image-managed
+`wp-content/mu-plugins/wordpress-docker-runtime.php` before serving WordPress.
+It supplies the installation marker and Doctor callback. Cron runs as the web
+user, with Doctor's WP-CLI package available outside the site volume.
+
 ## Build and run from source
 
 Use the root Compose files when changing the images themselves:
@@ -224,9 +263,21 @@ docker build --build-arg APP_ENV=prod -t wordpress-apache-fpm:prod .docker/apach
 ```
 
 Dockerfiles default to `prod` when `APP_ENV` is omitted.
-The isolated [FPM integration check](tests/docker/apache-fpm.sh) and its
-[usage instructions](docs/apache-fpm.md#smoke-test) cover startup, installation,
-persistence, cron, HTTP and Xdebug. There is no application test suite.
+Run the [integration checks for all four images](tests/docker/all.sh) from the
+repository root. Requires Docker, Bash, curl and Python 3:
+
+```bash
+bash tests/docker/all.sh
+```
+
+The script builds mod_php and FPM in both `dev` and `prod`, using local
+`wordpress-smoke-*` image tags. Each scenario creates and removes its own test
+containers, network and volumes; existing sites are not used. Checks cover
+installation, permalinks, REST, cron, fresh-install defaults, existing-site
+preservation, Doctor logging, persistence after restart, PHP runtime and Xdebug
+enabled/disabled. FPM also checks auto-install and failure detection.
+For individual FPM scenarios, see the [FPM guide](docs/apache-fpm.md#smoke-test).
+There is no application test suite.
 
 ### Makefile
 
