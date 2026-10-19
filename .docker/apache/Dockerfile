@@ -1,6 +1,6 @@
 FROM composer:latest AS composer
 
-FROM wordpress:latest
+FROM wordpress:php8.3-apache
 
 ARG APP_ENV=prod
 ENV APP_ENV=${APP_ENV}

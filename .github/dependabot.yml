@@ -8,6 +8,11 @@ updates:
     commit-message:
       prefix: "deps(docker):"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "wordpress"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
   - package-ecosystem: "docker"
     directory: "/.docker/apache-fpm"
     schedule:
@@ -16,3 +21,8 @@ updates:
     commit-message:
       prefix: "deps(docker):"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "php"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"

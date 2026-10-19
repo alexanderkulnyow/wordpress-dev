@@ -12,9 +12,13 @@ MariaDB runs in a separate container.
 | Apache + mod_php | `alexanderkulnyow/wordpress-dev` | `alexanderkulnyow/wordpress-prod` | [`.docker/apache`](.docker/apache/Dockerfile) |
 | Apache + PHP-FPM 8.3 | `alexanderkulnyow/wordpress-apache-fpm-dev` | `alexanderkulnyow/wordpress-apache-fpm-prod` | [`.docker/apache-fpm`](.docker/apache-fpm/Dockerfile) |
 
-The mod_php image extends `wordpress:latest`. The FPM image uses
+The mod_php image extends `wordpress:php8.3-apache`. The FPM image uses
 `php:8.3-fpm-bookworm`, Apache event MPM and a Unix socket between Apache and FPM;
 WordPress is downloaded and verified during the build.
+
+Both runtimes stay on PHP 8.3. Dependabot ignores minor and major version
+updates for these base image tags. New builds can pick up PHP 8.3 patch releases
+from the upstream tags; changing the PHP branch requires a manual change.
 
 The [CI workflow](.github/workflows/docker-build.yml) builds all four images for
 amd64 and arm64. Pushes to `main` publish to Docker Hub and GHCR with `latest`
