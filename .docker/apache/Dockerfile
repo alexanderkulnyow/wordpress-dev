@@ -34,7 +34,11 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
         && a2enconf fqdn \
         && a2enmod rewrite expires
 
-    COPY --chmod=0755 bin/phpdxdebug bin/apache2-foreground-supervised bin/wp-cron-loop bin/wp-provision /usr/local/bin/
+    COPY --chmod=0755 bin/phpdxdebug bin/apache2-foreground-supervised bin/wp-cron-loop bin/wp-provision bin/wp-runtime-init /usr/local/bin/
+
+    COPY usr/local/share/ /usr/local/share/
+    COPY etc/apache2/ /etc/apache2/
+    RUN a2enconf wordpress-doctor
 
     COPY --chmod=0644 etc/supervisor/conf.d/wordpress.conf /etc/supervisor/conf.d/wordpress.conf
 
@@ -42,12 +46,18 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
 
     COPY --from=composer /usr/bin/composer /usr/bin/composer
 
+    ENV WP_CLI_PACKAGES_DIR=/usr/local/share/wp-cli/packages
+
     # Install a tagged archive without GitHub API version discovery. Keep the path repository in the image.
     RUN mkdir -p /usr/local/share/wp-cli/doctor-command \
         && curl -fsSL --retry 3 https://codeload.github.com/wp-cli/doctor-command/tar.gz/refs/tags/v2.3.1 -o /tmp/doctor-command.tar.gz \
         && tar -xzf /tmp/doctor-command.tar.gz --strip-components=1 -C /usr/local/share/wp-cli/doctor-command \
         && php -r '$path = "/usr/local/share/wp-cli/doctor-command/composer.json"; $package = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR); $package["version"] = "2.3.1"; file_put_contents($path, json_encode($package, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);' \
-        && wp package install /usr/local/share/wp-cli/doctor-command --allow-root \
+        && for attempt in 1 2 3; do \
+            wp package install /usr/local/share/wp-cli/doctor-command --allow-root && break; \
+            if [ "$attempt" -eq 3 ]; then exit 1; fi; \
+            sleep 5; \
+        done \
         && rm /tmp/doctor-command.tar.gz
 
     COPY --chmod=0755 bin/wp-plugin-provision /usr/local/share/wordpress/commands/wpcli
@@ -66,6 +76,8 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
 
 WORKDIR /var/www/html
 
+# Supervisor is PID 1; the base image's Apache SIGWINCH does not stop it.
+STOPSIGNAL SIGTERM
 ENTRYPOINT ["phpdxdebug", "docker-entrypoint.sh"]
 
 # Name starts with "apache2" on purpose: the base image's docker-entrypoint.sh only runs its

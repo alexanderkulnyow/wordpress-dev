@@ -35,7 +35,11 @@ RUN curl -fsSL --retry 3 "https://github.com/wp-cli/wp-cli/releases/download/v${
     && curl -fsSL --retry 3 "https://codeload.github.com/wp-cli/doctor-command/tar.gz/refs/tags/v${WP_DOCTOR_VERSION}" -o /tmp/doctor-command.tar.gz \
     && tar -xzf /tmp/doctor-command.tar.gz --strip-components=1 -C /usr/local/share/wp-cli/doctor-command \
     && WP_DOCTOR_VERSION="$WP_DOCTOR_VERSION" php -r '$path = "/usr/local/share/wp-cli/doctor-command/composer.json"; $package = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR); $package["version"] = getenv("WP_DOCTOR_VERSION"); file_put_contents($path, json_encode($package, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);' \
-    && wp package install /usr/local/share/wp-cli/doctor-command --allow-root \
+    && for attempt in 1 2 3; do \
+        wp package install /usr/local/share/wp-cli/doctor-command --allow-root && break; \
+        if [ "$attempt" -eq 3 ]; then exit 1; fi; \
+        sleep 5; \
+    done \
     && rm /tmp/doctor-command.tar.gz
 
 # ZIP avoids PharData truncating long paths in the tar archive's bundled libraries.

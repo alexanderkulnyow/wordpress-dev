@@ -2,7 +2,7 @@
 # Waits for WordPress to finish installation (core tables present), then runs
 # the baked-in provisioning script once (plugin install/cleanup). Safe to run
 # on every container start: the provisioning script only acts on what's missing.
-set -u
+set -eu
 
 WP_PATH="/var/www/html"
 
@@ -10,6 +10,13 @@ echo "wp-provision: waiting for WordPress to be installed..."
 until wp core is-installed --allow-root --path="$WP_PATH" >/dev/null 2>&1; do
     sleep 5
 done
+
+if [ "$(wp option get wordpress_docker_defaults_pending --allow-root --path="$WP_PATH" 2>/dev/null || true)" = 1 ]; then
+    wp option update default_comment_status closed --allow-root --path="$WP_PATH"
+    wp option update users_can_register 0 --allow-root --path="$WP_PATH"
+    wp option delete wordpress_docker_defaults_pending --allow-root --path="$WP_PATH"
+fi
+wp eval '\WordPressDocker\schedule_doctor();' --allow-root --path="$WP_PATH"
 
 echo "wp-provision: WordPress is installed, running provisioning..."
 bash /usr/local/bin/wp-plugin-provision

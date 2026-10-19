@@ -38,6 +38,7 @@ if [ "${1:-}" = "apache2-foreground-supervised" ]; then
         chown "$PHP_FPM_USER:$PHP_FPM_GROUP" wp-config.php
     fi
 
+    wp-runtime-init
     php-fpm --test
     if [ "${WORDPRESS_AUTO_INSTALL:-false}" = true ]; then
         wordpress-install

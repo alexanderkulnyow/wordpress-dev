@@ -206,6 +206,12 @@ Cron and plugin provisioning wait for the site to be installed. Provisioning reu
 `DISABLE_WP_CRON` is enabled through the image's default `WORDPRESS_CONFIG_EXTRA`.
 If you override that variable, include `define('DISABLE_WP_CRON', true);` to retain one cron runner.
 
+Fresh installations receive the [initial comment/registration settings](../README.md#defaults-for-new-installations)
+once through WP-CLI. Existing installations and subsequent administrator changes are preserved.
+The [nightly Doctor event](../README.md#nightly-wp-doctor) runs all standard checks at 03:00 in the
+site timezone and appends its output and exit code to `wp-content/wp-doctor.log`.
+This log is stored in the site volume and cannot be downloaded through Apache.
+
 The configuration reads `WORDPRESS_DB_*`, `WORDPRESS_TABLE_PREFIX`, `WORDPRESS_DEBUG`, salt/key
 variables and `WORDPRESS_CONFIG_EXTRA` at runtime. Their `_FILE` counterparts are supported for secrets.
 Generated salts persist in `wp-config.php`. An existing custom configuration is not regenerated.

@@ -25,6 +25,7 @@ services:
         cpus: ${DB_CPUS:-1}
 
     wordpress:
+        image: ${IMAGE_REGISTRY:-docker.io}/alexanderkulnyow/wordpress-${APP_ENV:-dev}:${IMAGE_TAG:-latest}
         depends_on:
             - database
         build:

@@ -1,6 +1,8 @@
 .idea
 *.sql
 *.php
+!/.docker/apache/usr/local/share/wordpress/wordpress-docker-runtime.php
+!/.docker/apache-fpm/usr/local/share/wordpress/wordpress-docker-runtime.php
 !/.docker/apache-fpm/usr/local/share/wordpress/create-config.php
 /node_modules/
 /static/

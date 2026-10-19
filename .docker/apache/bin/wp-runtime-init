@@ -1,0 +1,29 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+plugin_dir=/var/www/html/wp-content/mu-plugins
+plugin_file="$plugin_dir/wordpress-docker-runtime.php"
+web_user="${APACHE_RUN_USER:-www-data}"
+web_group="${APACHE_RUN_GROUP:-www-data}"
+
+log_file=/var/www/html/wp-content/wp-doctor.log
+if [ -L "$log_file" ] || { [ -e "$log_file" ] && [ ! -f "$log_file" ]; }; then
+    echo "Refusing to use a non-regular Doctor log: $log_file." >&2
+    exit 1
+fi
+touch "$log_file"
+chown "${web_user#\#}:${web_group#\#}" "$log_file"
+chmod 0644 "$log_file"
+
+if [ -f "$plugin_file" ] && ! grep -q 'Managed by the wordpress-dev Docker image' "$plugin_file"; then
+    echo "Refusing to overwrite an unmanaged $plugin_file." >&2
+    exit 1
+fi
+
+if [ ! -d "$plugin_dir" ]; then
+    mkdir -p "$plugin_dir"
+    chown "${web_user#\#}:${web_group#\#}" "$plugin_dir"
+fi
+cp /usr/local/share/wordpress/wordpress-docker-runtime.php "$plugin_file"
+chmod 0644 "$plugin_file"
+chown "${web_user#\#}:${web_group#\#}" "$plugin_file"
