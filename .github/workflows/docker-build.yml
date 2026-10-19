@@ -18,6 +18,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -39,8 +44,7 @@ jobs:
       - name: Build and push Docker prod image
         uses: docker/build-push-action@v6
         with:
-          context: .docker
-          file: .docker/Dockerfile
+          context: .docker/apache
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           platforms: linux/amd64,linux/arm64/v8
           build-args: |
@@ -54,8 +58,7 @@ jobs:
       - name: Build and push Docker dev image
         uses: docker/build-push-action@v6
         with:
-            context: .docker
-            file: .docker/Dockerfile
+            context: .docker/apache
             push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
             platforms: linux/amd64,linux/arm64/v8
             build-args: |
@@ -65,3 +68,31 @@ jobs:
                 alexanderkulnyow/wordpress-dev:${{ github.sha }}
                 ghcr.io/alexanderkulnyow/wordpress-dev:latest
                 ghcr.io/alexanderkulnyow/wordpress-dev:${{ github.sha }}
+
+      - name: Build and push Apache + FPM prod image
+        uses: docker/build-push-action@v6
+        with:
+          context: .docker/apache-fpm
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          platforms: linux/amd64,linux/arm64/v8
+          build-args: |
+            APP_ENV=prod
+          tags: |
+            alexanderkulnyow/wordpress-apache-fpm-prod:latest
+            alexanderkulnyow/wordpress-apache-fpm-prod:${{ github.sha }}
+            ghcr.io/alexanderkulnyow/wordpress-apache-fpm-prod:latest
+            ghcr.io/alexanderkulnyow/wordpress-apache-fpm-prod:${{ github.sha }}
+
+      - name: Build and push Apache + FPM dev image
+        uses: docker/build-push-action@v6
+        with:
+          context: .docker/apache-fpm
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          platforms: linux/amd64,linux/arm64/v8
+          build-args: |
+            APP_ENV=dev
+          tags: |
+            alexanderkulnyow/wordpress-apache-fpm-dev:latest
+            alexanderkulnyow/wordpress-apache-fpm-dev:${{ github.sha }}
+            ghcr.io/alexanderkulnyow/wordpress-apache-fpm-dev:latest
+            ghcr.io/alexanderkulnyow/wordpress-apache-fpm-dev:${{ github.sha }}

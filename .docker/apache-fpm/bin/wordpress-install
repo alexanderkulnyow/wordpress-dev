@@ -1,0 +1,62 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+wp() {
+    runuser -u "$PHP_FPM_USER" -- wp --path=/var/www/html --skip-plugins --skip-themes "$@"
+}
+
+read_setting() {
+    local name="$1" file_name="${1}_FILE" value
+    if [ -n "${!file_name:-}" ]; then
+        if [ ! -r "${!file_name}" ]; then
+            echo "Cannot read secret file for $name." >&2
+            return 1
+        fi
+        value=$(cat "${!file_name}")
+        while [[ "$value" == *$'\r' || "$value" == *$'\n' ]]; do
+            value="${value%?}"
+        done
+    else
+        value="${!name:-}"
+    fi
+    printf '%s' "$value"
+}
+
+echo 'Auto-install: waiting for database connectivity...'
+connected=false
+for attempt in {1..60}; do
+    if wp db query 'SELECT 1' --skip-column-names >/dev/null 2>&1; then
+        connected=true
+        break
+    fi
+    sleep 2
+done
+if [ "$connected" != true ]; then
+    echo 'Auto-install: database is unavailable after 120 seconds.' >&2
+    exit 1
+fi
+
+if wp core is-installed >/dev/null 2>&1; then
+    echo 'Auto-install: existing WordPress installation preserved.'
+    exit 0
+fi
+
+tables=$(wp db query 'SHOW TABLES' --skip-column-names)
+if [ -n "$tables" ]; then
+    echo 'Auto-install: database contains tables; refusing to initialize it automatically.' >&2
+    exit 1
+fi
+
+url=$(read_setting WORDPRESS_URL)
+title=$(read_setting WORDPRESS_TITLE)
+admin_user=$(read_setting WORDPRESS_ADMIN_USER)
+admin_email=$(read_setting WORDPRESS_ADMIN_EMAIL)
+admin_password=$(read_setting WORDPRESS_ADMIN_PASSWORD)
+if [ -z "$url" ] || [ -z "$title" ] || [ -z "$admin_user" ] || [ -z "$admin_email" ] || [ -z "$admin_password" ]; then
+    echo 'Auto-install requires WORDPRESS_URL, WORDPRESS_TITLE, WORDPRESS_ADMIN_USER, WORDPRESS_ADMIN_EMAIL and WORDPRESS_ADMIN_PASSWORD (or their _FILE counterparts).' >&2
+    exit 1
+fi
+
+wp core install --url="$url" --title="$title" --admin_user="$admin_user" \
+    --admin_email="$admin_email" --admin_password="$admin_password" --skip-email --quiet
+echo 'Auto-install: WordPress installed successfully.'

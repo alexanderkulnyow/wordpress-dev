@@ -1,6 +1,6 @@
 FROM composer:latest AS composer
 
-FROM wordpress:php8.4-fpm
+FROM wordpress:latest
 
 ARG APP_ENV=prod
 ENV APP_ENV=${APP_ENV}
@@ -19,6 +19,7 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
         libzip-dev \
         mariadb-client \
         sudo \
+        supervisor \
         unzip \
         nano \
         htop \
@@ -27,11 +28,17 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
     RUN curl -fsSL --retry 3 https://github.com/wp-cli/wp-cli/releases/download/v2.12.0/wp-cli-2.12.0.phar -o wp-cli.phar \
         && php wp-cli.phar --info --allow-root \
         && chmod +x wp-cli.phar \
-        && mv wp-cli.phar /usr/local/bin/wp
+        && mv wp-cli.phar /usr/local/bin/wp \
+        && sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf \
+        && echo 'ServerName localhost' > /etc/apache2/conf-available/fqdn.conf \
+        && a2enconf fqdn \
+        && a2enmod rewrite expires
 
-    COPY --chmod=0755 bin/ /usr/local/bin/
+    COPY --chmod=0755 bin/phpdxdebug bin/apache2-foreground-supervised bin/wp-cron-loop bin/wp-provision /usr/local/bin/
 
-    COPY php.d /usr/local/etc/php/conf.d/
+    COPY --chmod=0644 etc/supervisor/conf.d/wordpress.conf /etc/supervisor/conf.d/wordpress.conf
+
+    COPY usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 
     COPY --from=composer /usr/bin/composer /usr/bin/composer
 
@@ -43,9 +50,7 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
         && wp package install /usr/local/share/wp-cli/doctor-command --allow-root \
         && rm /tmp/doctor-command.tar.gz
 
-    COPY --chmod=0755 wp-cli/wpcli /usr/local/share/wordpress/commands/
-
-    COPY --chmod=0755 plugins /usr/local/share/wordpress/commands/plugins/
+    COPY --chmod=0755 bin/wp-plugin-provision /usr/local/share/wordpress/commands/wpcli
 
     RUN sed -i 's/\r$//' /usr/local/share/wordpress/commands/wpcli
 
@@ -62,4 +67,7 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
 WORKDIR /var/www/html
 
 ENTRYPOINT ["phpdxdebug", "docker-entrypoint.sh"]
-CMD ["php-fpm"]
+
+# Name starts with "apache2" on purpose: the base image's docker-entrypoint.sh only runs its
+# wp-config.php/WORDPRESS_* setup when $1 matches "apache2*", before exec'ing into this wrapper.
+CMD ["apache2-foreground-supervised"]

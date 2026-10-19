@@ -1,0 +1,17 @@
+#!/bin/bash
+# Enable or disable Xdebug based on ENV variable
+set -e
+
+XDEBUG_INI="/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini"
+
+if [ -f "$XDEBUG_INI" ]; then
+    if [ "${XDEBUG:-false}" = "true" ]; then
+        sed -i 's/^;zend_extension/zend_extension/' "$XDEBUG_INI"
+        echo "Xdebug is enabled." >&2
+    else
+        sed -i 's/^zend_extension/;zend_extension/' "$XDEBUG_INI"
+        echo "Xdebug is disabled." >&2
+    fi
+fi
+
+exec "$@"

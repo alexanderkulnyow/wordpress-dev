@@ -1,6 +1,7 @@
 .idea
 *.sql
 *.php
+!/.docker/apache-fpm/usr/local/share/wordpress/create-config.php
 /node_modules/
 /static/
 /vendor/
@@ -37,6 +38,7 @@ Thumbs.db
 junit.xml
 
 # Local overrides
+/examples/*/.env
 .wp-env.override.json
 playwright.config.override.ts
 phpcs.xml

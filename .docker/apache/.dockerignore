@@ -1,0 +1,8 @@
+**
+!Dockerfile
+!bin/
+!bin/**
+!etc/
+!etc/**
+!usr/
+!usr/**

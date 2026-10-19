@@ -1,37 +1,14 @@
 #!/bin/bash
 
-# Path to the baked-in default plugin list file (used when WORDPRESS_PLUGINS is not set)
-PLUGIN_LIST="/usr/local/share/wordpress/commands/plugins/plugins.txt"
-
 # Function to display error messages and exit
 function error_exit {
     echo "Error: $1"
     exit 1
 }
 
-# Function to check line endings (CRLF -> LF)
-function convert_line_endings {
-    if file "$PLUGIN_LIST" | grep -q "with CRLF line terminators"; then
-        echo "The file uses CRLF. Converting to LF..." >&2
-        sed -i 's/\r$//' "$PLUGIN_LIST"
-        echo "Conversion completed. The file is now in LF format." >&2
-    else
-        echo "The file already uses LF." >&2
-    fi
-}
-
 # Function to output the plugin slugs to install, one per line.
-# Prefers the WORDPRESS_PLUGINS env var (comma-separated) over the baked-in plugins.txt file.
 function get_plugin_list {
-    if [ -n "${WORDPRESS_PLUGINS:-}" ]; then
-        echo "$WORDPRESS_PLUGINS" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
-    else
-        if [ ! -f "$PLUGIN_LIST" ]; then
-            error_exit "Plugin list file not found: $PLUGIN_LIST"
-        fi
-        convert_line_endings
-        cat "$PLUGIN_LIST"
-    fi
+    printf '%s\n' "${WORDPRESS_PLUGINS:-}" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
 }
 
 # Function to install plugins
@@ -135,7 +112,7 @@ function remove_twenty_themes {
 
 # Main function
 function main {
-    # Install plugins (from WORDPRESS_PLUGINS env var, or the baked-in plugin list file)
+    # Install plugins from WORDPRESS_PLUGINS
     install_plugins
 
     # Remove unnecessary plugins
