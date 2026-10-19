@@ -1,4 +1,4 @@
-FROM composer:latest AS composer
+    FROM composer:latest AS composer
 
 FROM wordpress:latest
 
