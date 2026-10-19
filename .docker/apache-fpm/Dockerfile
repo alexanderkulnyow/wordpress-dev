@@ -1,6 +1,6 @@
 FROM composer:latest AS composer
 
-FROM php:8.3-fpm-bookworm
+FROM php:8.5-fpm-bookworm
 
 ARG WORDPRESS_VERSION=7.1.3
 ARG WP_CLI_VERSION=2.12.0
