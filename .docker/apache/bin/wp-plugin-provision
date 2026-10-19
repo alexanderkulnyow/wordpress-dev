@@ -1,0 +1,130 @@
+#!/bin/bash
+
+# Function to display error messages and exit
+function error_exit {
+    echo "Error: $1"
+    exit 1
+}
+
+# Function to output the plugin slugs to install, one per line.
+function get_plugin_list {
+    printf '%s\n' "${WORDPRESS_PLUGINS:-}" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+}
+
+# Function to install plugins
+function install_plugins {
+    local plugin_root plugin_file plugin_path content_dir web_user web_group owner
+    if [ "$(id -u)" -eq 0 ]; then
+        web_user="${APACHE_RUN_USER:-www-data}"
+        web_group="${APACHE_RUN_GROUP:-www-data}"
+        owner="${web_user#\#}:${web_group#\#}"
+        plugin_root=$(wp plugin path --allow-root --skip-plugins --skip-themes) || error_exit "Cannot locate plugin directory."
+    fi
+
+    echo "Starting installation of plugins..."
+    while IFS= read -r plugin; do
+        if [ -n "$plugin" ]; then
+            if wp plugin is-installed "$plugin" --allow-root; then
+                echo "Plugin $plugin is already installed."
+            else
+                echo "Installing plugin: $plugin"
+                wp plugin install "$plugin" --activate --allow-root || error_exit "Error installing plugin: $plugin"
+            fi
+            if [ "$(id -u)" -eq 0 ]; then
+                plugin_file=$(wp plugin path "$plugin" --allow-root --skip-plugins --skip-themes) || error_exit "Cannot locate plugin: $plugin"
+                case "$plugin_file" in
+                    "$plugin_root"/*)
+                        # Use the plugin's top-level path; a single-file plugin must not select the entire plugins directory.
+                        plugin_path="${plugin_file#"$plugin_root"/}"
+                        plugin_path="$plugin_root/${plugin_path%%/*}"
+                        ;;
+                    *) error_exit "Plugin path is outside the plugin directory: $plugin" ;;
+                esac
+                chown -R "$owner" "$plugin_path" || error_exit "Cannot set ownership for plugin: $plugin"
+            fi
+        fi
+    done < <(get_plugin_list)
+
+    if [ "$(id -u)" -eq 0 ]; then
+        content_dir=$(wp eval 'echo WP_CONTENT_DIR;' --allow-root --skip-plugins --skip-themes) || error_exit "Cannot locate wp-content directory."
+        for plugin_path in "$content_dir/upgrade" "$content_dir/upgrade-temp-backup"; do
+            if [ -d "$plugin_path" ]; then
+                chown -R "$owner" "$plugin_path" || error_exit "Cannot set ownership for upgrade directory: $plugin_path"
+            fi
+        done
+    fi
+}
+
+# Function to remove plugins
+function remove_plugins {
+    REMOVE_PLUGINS=("akismet" "hello")
+
+    echo "Checking and removing plugins: ${REMOVE_PLUGINS[*]}"
+
+    for plugin in "${REMOVE_PLUGINS[@]}"; do
+        if wp plugin is-installed "$plugin" --allow-root; then
+            echo "Plugin $plugin found. Deactivating and removing..."
+            wp plugin deactivate "$plugin" --allow-root || { echo "Error deactivating plugin $plugin"; exit 1; }
+            wp plugin delete "$plugin" --allow-root ||  { echo "Error removing plugin $plugin"; exit 1; }
+        else
+            echo "Plugin $plugin not found. Skipping..."
+        fi
+    done
+}
+function deactivate_plugins {
+    REMOVE_PLUGINS=("wps-hide-login")
+
+    echo "Checking and removing plugins: ${REMOVE_PLUGINS[*]}"
+
+    for plugin in "${REMOVE_PLUGINS[@]}"; do
+        if wp plugin is-installed "$plugin" --allow-root; then
+            echo "Plugin $plugin found. Deactivating and removing..."
+            wp plugin deactivate "$plugin" --allow-root || { echo "Error deactivating plugin $plugin"; exit 1; }
+            wp plugin delete "$plugin" --allow-root ||  { echo "Error removing plugin $plugin"; exit 1; }
+        else
+            echo "Plugin $plugin not found. Skipping..."
+        fi
+    done
+}
+
+# Function to remove themes starting with "twenty"
+function remove_twenty_themes {
+    echo "Starting to remove themes starting with 'twenty'..."
+
+    # Get a list of all themes starting with "twenty"
+    themes_to_remove=$(wp theme list --allow-root --fields=name --status=all | grep -i '^twenty' | tr '\n' ' ')
+
+    if [ -n "$themes_to_remove" ]; then
+        for theme in $themes_to_remove; do
+            # Check if the theme is active before removing
+            if [ "$(wp theme is-active $theme --allow-root)" = "true" ]; then
+                echo "Theme $theme is active. Switching to the default theme..."
+                wp theme activate twentyfifteen --allow-root || error_exit "Error activating theme twentyfifteen."
+            fi
+            # Remove the theme
+            echo "Removing theme $theme..."
+            wp theme delete $theme --allow-root || error_exit "Error removing theme $theme."
+        done
+    else
+        echo "No themes starting with 'twenty' found."
+    fi
+}
+
+# Main function
+function main {
+    # Install plugins from WORDPRESS_PLUGINS
+    install_plugins
+
+    # Remove unnecessary plugins
+    remove_plugins
+
+    # Deactivate unnecessary plugins
+		deactivate_plugins
+    # Remove themes starting with 'twenty'
+#    remove_twenty_themes
+
+    echo "Process completed successfully."
+}
+
+# Run the main function
+main

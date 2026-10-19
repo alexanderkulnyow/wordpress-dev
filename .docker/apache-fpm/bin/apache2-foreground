@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+apache_user="${APACHE_RUN_USER:-www-data}"
+apache_group="${APACHE_RUN_GROUP:-www-data}"
+source /etc/apache2/envvars
+export APACHE_RUN_USER="$apache_user"
+export APACHE_RUN_GROUP="$apache_group"
+
+mkdir -p "$APACHE_RUN_DIR" "$APACHE_LOCK_DIR" "$APACHE_LOG_DIR"
+rm -f "$APACHE_PID_FILE"
+
+exec apache2 -DFOREGROUND "$@"

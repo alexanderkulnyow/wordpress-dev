@@ -1,0 +1,57 @@
+name: ${PROJECT_NAME:-my-wordpress-apache-fpm}
+
+services:
+    database:
+        image: mariadb:10.11
+        restart: unless-stopped
+        environment:
+            MARIADB_DATABASE: ${WORDPRESS_DB_NAME:-wordpress}
+            MARIADB_USER: ${WORDPRESS_DB_USER:-wordpress}
+            MARIADB_PASSWORD: ${WORDPRESS_DB_PASSWORD:?Set WORDPRESS_DB_PASSWORD in .env}
+            MARIADB_RANDOM_ROOT_PASSWORD: "1"
+        volumes:
+            - db-data:/var/lib/mysql
+        healthcheck:
+            test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+            interval: 5s
+            timeout: 5s
+            retries: 30
+        mem_limit: ${DB_MEM_LIMIT:-512m}
+        cpus: ${DB_CPUS:-1}
+
+    wordpress:
+        image: ${IMAGE_REGISTRY:-docker.io}/alexanderkulnyow/wordpress-apache-fpm-${APP_ENV:-prod}:${IMAGE_TAG:-latest}
+        restart: unless-stopped
+        depends_on:
+            database:
+                condition: service_healthy
+        ports:
+            - "127.0.0.1:${WORDPRESS_PORT:-8083}:80"
+        environment:
+            WORDPRESS_DB_HOST: database
+            WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME:-wordpress}
+            WORDPRESS_DB_USER: ${WORDPRESS_DB_USER:-wordpress}
+            WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD:?Set WORDPRESS_DB_PASSWORD in .env}
+            WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX:-wp_}
+            WORDPRESS_DEBUG: ${WORDPRESS_DEBUG:-0}
+            WORDPRESS_PLUGINS: ${WORDPRESS_PLUGINS-}
+            WP_CRON_INTERVAL: ${WP_CRON_INTERVAL:-60}
+            XDEBUG: ${XDEBUG:-false}
+            PHP_FPM_MAX_CHILDREN: ${PHP_FPM_MAX_CHILDREN:-2}
+            WORDPRESS_AUTO_INSTALL: ${WORDPRESS_AUTO_INSTALL:-false}
+            WORDPRESS_URL: ${WORDPRESS_URL:-}
+            WORDPRESS_TITLE: ${WORDPRESS_TITLE:-}
+            WORDPRESS_ADMIN_USER: ${WORDPRESS_ADMIN_USER:-}
+            WORDPRESS_ADMIN_EMAIL: ${WORDPRESS_ADMIN_EMAIL:-}
+            WORDPRESS_ADMIN_PASSWORD: ${WORDPRESS_ADMIN_PASSWORD:-}
+        volumes:
+            - wp-data:/var/www/html
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        stop_grace_period: 70s
+        mem_limit: ${WORDPRESS_MEM_LIMIT:-1g}
+        cpus: ${WORDPRESS_CPUS:-2}
+
+volumes:
+    db-data:
+    wp-data:

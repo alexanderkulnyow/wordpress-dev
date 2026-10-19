@@ -1,0 +1,17 @@
+#!/bin/bash
+set -eu
+
+interval="${WP_CRON_INTERVAL:-60}"
+if [[ ! "$interval" =~ ^[1-9][0-9]*$ ]]; then
+    echo 'WP_CRON_INTERVAL must be a positive integer.' >&2
+    exit 1
+fi
+
+until wp core is-installed --path=/var/www/html --skip-plugins --skip-themes >/dev/null 2>&1; do
+    sleep 5
+done
+
+while true; do
+    wp cron event run --due-now --path=/var/www/html --quiet
+    sleep "$interval"
+done

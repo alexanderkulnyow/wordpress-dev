@@ -1,0 +1,48 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+if [ "${1:-}" = "apache2-foreground-supervised" ]; then
+    cd /var/www/html
+    case "${WORDPRESS_AUTO_INSTALL:-false}" in
+        true|false) ;;
+        *) echo 'WORDPRESS_AUTO_INSTALL must be true or false.' >&2; exit 1 ;;
+    esac
+    if [[ ! "$PHP_FPM_MAX_CHILDREN" =~ ^[1-9][0-9]*$ ]]; then
+        echo 'PHP_FPM_MAX_CHILDREN must be a positive integer.' >&2
+        exit 1
+    fi
+
+    export PHP_FPM_USER="${APACHE_RUN_USER#\#}"
+    export PHP_FPM_GROUP="${APACHE_RUN_GROUP#\#}"
+    mkdir -p /run/php
+
+    if [ ! -f index.php ] && [ ! -f wp-includes/version.php ]; then
+        exclude_args=()
+        for content_path in /usr/src/wordpress/wp-content/*/*; do
+            [ -e "$content_path" ] || continue
+            relative_path="${content_path#/usr/src/wordpress/}"
+            if [ -e "$relative_path" ]; then
+                exclude_args+=(--exclude="./$relative_path")
+            fi
+        done
+        echo 'Copying the WordPress core prepared at build time...'
+        tar -C /usr/src/wordpress "${exclude_args[@]}" --owner="$PHP_FPM_USER" --group="$PHP_FPM_GROUP" -cf - . | tar -xf -
+        chown "$PHP_FPM_USER:$PHP_FPM_GROUP" .
+    elif [ ! -f index.php ] || [ ! -f wp-includes/version.php ]; then
+        echo 'Incomplete WordPress core in /var/www/html; refusing to overwrite it.' >&2
+        exit 1
+    fi
+
+    if [ ! -s wp-config.php ]; then
+        php /usr/local/share/wordpress/create-config.php
+        chown "$PHP_FPM_USER:$PHP_FPM_GROUP" wp-config.php
+    fi
+
+    php-fpm --test
+    if [ "${WORDPRESS_AUTO_INSTALL:-false}" = true ]; then
+        wordpress-install
+    fi
+    unset WORDPRESS_ADMIN_PASSWORD WORDPRESS_ADMIN_PASSWORD_FILE
+fi
+
+exec "$@"
