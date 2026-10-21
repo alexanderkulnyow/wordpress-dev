@@ -12,7 +12,7 @@ the dev image includes it and loads it only when `XDEBUG=true`.
 | prod | `alexanderkulnyow/wordpress-apache-fpm-prod` | `ghcr.io/alexanderkulnyow/wordpress-apache-fpm-prod` |
 
 Both support amd64 and arm64, with `latest` and published commit SHA tags. CI builds on PRs to
-`main` and publishes on pushes to `main`. The separate `wordpress-dev` / `wordpress-prod` image
+`main` and publishes on pushes or manual runs from `main`, pulling current base images. The separate `wordpress-dev` / `wordpress-prod` image
 names continue to use Apache + mod_php.
 
 ## Run a published image
@@ -30,7 +30,7 @@ name: ${PROJECT_NAME:-my-wordpress-apache-fpm}
 
 services:
     database:
-        image: mariadb:10.11
+        image: mariadb:12.3.3
         restart: unless-stopped
         environment:
             MARIADB_DATABASE: ${WORDPRESS_DB_NAME:-wordpress}
@@ -48,7 +48,7 @@ services:
         cpus: ${DB_CPUS:-1}
 
     wordpress:
-        image: ${IMAGE_REGISTRY:-docker.io}/alexanderkulnyow/wordpress-apache-fpm-${APP_ENV:-prod}:${IMAGE_TAG:-latest}
+        image: alexanderkulnyow/wordpress-apache-fpm-${APP_ENV:-prod}:${IMAGE_TAG:-latest}
         restart: unless-stopped
         depends_on:
             database:
@@ -89,7 +89,6 @@ volumes:
 
 ```dotenv
 PROJECT_NAME=my-wordpress-apache-fpm
-IMAGE_REGISTRY=docker.io
 APP_ENV=prod
 IMAGE_TAG=latest
 WORDPRESS_PORT=8083
@@ -166,7 +165,7 @@ For Xdebug, set `APP_ENV=dev` and `XDEBUG=true` in `.env`, then run `docker comp
 `9003`; Xdebug connects to `host.docker.internal:9003`, so no FPM or debugger port mapping is needed.
 The [main README](../README.md#working-on-your-own-plugin-or-theme) shows how to mount your own code.
 
-Set `IMAGE_REGISTRY=ghcr.io` for GHCR or `IMAGE_REGISTRY=docker.io` for Docker Hub.
+The example uses Docker Hub. For GHCR, prefix its WordPress `image` with `ghcr.io/`.
 Set `IMAGE_TAG` to `latest` or a published commit SHA. To fetch a newer image, run
 `docker compose pull` followed by `docker compose up -d`. The site and database volumes are retained;
 WordPress core in an existing site volume is preserved rather than replaced from the image.

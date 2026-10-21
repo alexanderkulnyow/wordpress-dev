@@ -7,7 +7,7 @@ image_prefix="${1:-wordpress-smoke}"
 for runtime in apache apache-fpm; do
     for variant in prod dev; do
         image="$image_prefix-$runtime:$variant"
-        docker build --build-arg "APP_ENV=$variant" -t "$image" "$root/.docker/$runtime"
+        docker build --pull --build-arg "APP_ENV=$variant" -t "$image" "$root/.docker/$runtime"
     done
 done
 
