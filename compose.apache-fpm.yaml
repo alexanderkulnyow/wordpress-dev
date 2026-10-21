@@ -1,8 +1,15 @@
 name: ${PROJECT_NAME:-wordpress}-apache-fpm
 
+networks:
+    wp-network:
+
+volumes:
+    db-data:
+    wp-data:
+
 services:
     database:
-        image: mariadb:10.11
+        image: mariadb:12.3.3
         environment:
             MARIADB_DATABASE: ${WORDPRESS_DB_NAME:-wordpress}
             MARIADB_USER: ${WORDPRESS_DB_USER:-wordpress}
@@ -17,6 +24,8 @@ services:
             retries: 30
         mem_limit: ${DB_MEM_LIMIT:-512m}
         cpus: ${DB_CPUS:-1}
+        networks:
+            - wp-network
 
     wordpress:
         image: ${IMAGE_REGISTRY:-docker.io}/alexanderkulnyow/wordpress-apache-fpm-${APP_ENV:-dev}:${IMAGE_TAG:-latest}
@@ -54,7 +63,6 @@ services:
         stop_grace_period: 70s
         mem_limit: ${WORDPRESS_MEM_LIMIT:-1g}
         cpus: ${WORDPRESS_CPUS:-2}
+        networks:
+            - wp-network
 
-volumes:
-    db-data:
-    wp-data:

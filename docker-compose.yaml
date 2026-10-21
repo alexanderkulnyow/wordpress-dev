@@ -1,14 +1,13 @@
+name: ${PROJECT_NAME}
 networks:
     wp-network:
-        name: ${PROJECT_NAME}-network
 
 volumes:
     wp-data:
-        name: ${PROJECT_NAME}-data
 
 services:
     database:
-        image: mariadb:10.11
+        image: mariadb:12.3.3
         container_name: "${PROJECT_NAME}-database"
         volumes:
             - .docker/dbData:/var/lib/mysql
@@ -19,10 +18,10 @@ services:
             MARIADB_USER: ${WORDPRESS_DB_USER}
             MARIADB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
             MARIADB_RANDOM_ROOT_PASSWORD: 1
-        networks:
-            - wp-network
         mem_limit: ${DB_MEM_LIMIT:-512m}
         cpus: ${DB_CPUS:-1}
+        networks:
+            - wp-network
 
     wordpress:
         image: ${IMAGE_REGISTRY:-docker.io}/alexanderkulnyow/wordpress-${APP_ENV:-dev}:${IMAGE_TAG:-latest}
@@ -52,7 +51,7 @@ services:
             - ./var/log:/var/log/apache2
         extra_hosts:
             - "host.docker.internal:host-gateway"
-        networks:
-            - wp-network
         mem_limit: ${WORDPRESS_MEM_LIMIT:-1g}
         cpus: ${WORDPRESS_CPUS:-2}
+        networks:
+            - wp-network

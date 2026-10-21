@@ -1,4 +1,5 @@
 #!/bin/bash
 set -e
 
+mkdir -p /var/log/supervisor
 exec supervisord -n -c /etc/supervisor/supervisord.conf

@@ -88,7 +88,7 @@ docker volume create "$volume" >/dev/null
 docker run -d --name "$database" --network "$network" --network-alias database \
     -e MARIADB_DATABASE=wordpress -e MARIADB_USER=wordpress \
     -e MARIADB_PASSWORD=smoke-test-only -e MARIADB_ROOT_PASSWORD=smoke-root-only \
-    mariadb:10.11 >/dev/null
+    mariadb:12.3.3 >/dev/null
 docker create --name "$site" --network "$network" --stop-timeout 70 \
     -p "127.0.0.1:$port:80" --mount "type=volume,source=$volume,target=/var/www/html" \
     -e WORDPRESS_DB_HOST=database -e WORDPRESS_DB_NAME=wordpress \
