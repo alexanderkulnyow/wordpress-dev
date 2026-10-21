@@ -16,8 +16,9 @@ Includes WP-CLI, Doctor, Composer, cron and plugin provisioning.
 Available on Docker Hub and GHCR (`ghcr.io/` prefix), for amd64 and arm64.
 The examples use Docker Hub. For GHCR, set the full `ghcr.io/alexanderkulnyow/...` image name in Compose.
 Tags: `latest` or full commit SHA to pin a build.
-[CI](.github/workflows/docker-build.yml) pulls current base images and publishes on pushes or manual runs from `main`; PRs only build.
-To rebuild manually: **Actions → Build and push Docker image → Run workflow → main**.
+[CI](.github/workflows/docker-build.yml) runs manually and pulls current base images. In GitHub, open
+**Actions → Build and push Docker image → Run workflow**, select `main`, then click **Run workflow**
+to publish. Runs from another branch only build the images.
 
 ## Quick start
 

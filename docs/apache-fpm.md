@@ -11,9 +11,9 @@ the dev image includes it and loads it only when `XDEBUG=true`.
 | dev | `alexanderkulnyow/wordpress-apache-fpm-dev` | `ghcr.io/alexanderkulnyow/wordpress-apache-fpm-dev` |
 | prod | `alexanderkulnyow/wordpress-apache-fpm-prod` | `ghcr.io/alexanderkulnyow/wordpress-apache-fpm-prod` |
 
-Both support amd64 and arm64, with `latest` and published commit SHA tags. CI builds on PRs to
-`main` and publishes on pushes or manual runs from `main`, pulling current base images. The separate `wordpress-dev` / `wordpress-prod` image
-names continue to use Apache + mod_php.
+Both support amd64 and arm64, with `latest` and published commit SHA tags. CI runs manually and
+publishes on `main`, pulling current base images. Runs from other branches only build. The separate `wordpress-dev` /
+`wordpress-prod` image names continue to use Apache + mod_php.
 
 ## Run a published image
 
