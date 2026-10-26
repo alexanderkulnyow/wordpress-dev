@@ -220,6 +220,22 @@ if ($result["sapi"] !== ($isFpm ? "fpm-fcgi" : "apache2handler")
 docker exec "$site" rm /var/www/html/runtime-smoke.php
 echo 'PASS: install, permalinks, REST, PHP environment, Authorization and Xdebug'
 
+# Exercise Doctor's matched-file branch without flushing the site's cache.
+docker exec -i "$site" sh -c 'cat > /var/www/html/wp-content/mu-plugins/smoke-cache-flush.php' <<'PHP'
+<?php
+function wordpress_smoke_unused_cache_flush(): void {
+    wp_cache_flush();
+}
+PHP
+cache_flush_result=$(wp doctor check cache-flush --format=json)
+printf '%s' "$cache_flush_result" | docker exec -i "$site" php -r '
+$checks = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR);
+if (count($checks) !== 1 || $checks[0]["status"] !== "warning"
+    || strpos($checks[0]["message"], "mu-plugins/smoke-cache-flush.php") === false) {
+    throw new RuntimeException("Doctor did not report the cache-flush fixture: " . json_encode($checks));
+}'
+echo 'PASS: Doctor reports a detected cache flush without a fatal error'
+
 docker exec "$site" chown root:root /var/www/html/wp-content
 docker exec --user www-data "$site" test -w /var/www/html/wp-content/wp-doctor.log
 wp option update blog_public 0 >/dev/null
@@ -230,6 +246,12 @@ doctor_checks=$(wp doctor list --config=/usr/local/share/wp-cli/doctor-command/d
 while IFS= read -r check; do
     docker exec "$site" grep -Fq -- "$check" /var/www/html/wp-content/wp-doctor.log
 done <<< "$doctor_checks"
+docker exec "$site" grep -Fq 'mu-plugins/smoke-cache-flush.php' /var/www/html/wp-content/wp-doctor.log
+if docker exec "$site" grep -q 'Fatal error' /var/www/html/wp-content/wp-doctor.log; then
+    echo 'Doctor crashed during the scheduled checks.' >&2
+    exit 1
+fi
+docker exec "$site" rm /var/www/html/wp-content/mu-plugins/smoke-cache-flush.php
 [ "$(curl --silent --output /dev/null --write-out '%{http_code}' "$url/wp-content/wp-doctor.log")" = 403 ]
 doctor_log_size=$(docker exec "$site" stat -c %s /var/www/html/wp-content/wp-doctor.log)
 wp cron event run wordpress_docker_doctor --quiet

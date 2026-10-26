@@ -131,6 +131,8 @@ Existing sites retain their settings; administrators can change these defaults l
 
 Provisioning schedules `wordpress_docker_doctor` for **03:00 in the WordPress timezone**, once per day.
 The event runs `wp doctor check --all`; overdue events run when cron resumes.
+Both image variants pin WP-CLI `2.12.0` and Doctor `2.3.0`. Doctor `2.3.1` calls
+`WP_CLI\Path`, which is unavailable in WP-CLI `2.12.0`, and crashes when a cache flush is detected.
 Startup installs the runtime MU-plugin and creates `wp-content/wp-doctor.log`.
 The log contains output, timestamps and exit codes, independently of `WP_DEBUG_LOG`; HTTP access is denied.
 

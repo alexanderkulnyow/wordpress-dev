@@ -50,9 +50,9 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
 
     # Install a tagged archive without GitHub API version discovery. Keep the path repository in the image.
     RUN mkdir -p /usr/local/share/wp-cli/doctor-command \
-        && curl -fsSL --retry 3 https://codeload.github.com/wp-cli/doctor-command/tar.gz/refs/tags/v2.3.1 -o /tmp/doctor-command.tar.gz \
+        && curl -fsSL --retry 3 https://codeload.github.com/wp-cli/doctor-command/tar.gz/refs/tags/v2.3.0 -o /tmp/doctor-command.tar.gz \
         && tar -xzf /tmp/doctor-command.tar.gz --strip-components=1 -C /usr/local/share/wp-cli/doctor-command \
-        && php -r '$path = "/usr/local/share/wp-cli/doctor-command/composer.json"; $package = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR); $package["version"] = "2.3.1"; file_put_contents($path, json_encode($package, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);' \
+        && php -r '$path = "/usr/local/share/wp-cli/doctor-command/composer.json"; $package = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR); $package["version"] = "2.3.0"; file_put_contents($path, json_encode($package, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);' \
         && for attempt in 1 2 3; do \
             wp package install /usr/local/share/wp-cli/doctor-command --allow-root && break; \
             if [ "$attempt" -eq 3 ]; then exit 1; fi; \
