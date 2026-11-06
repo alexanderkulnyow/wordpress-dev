@@ -32,13 +32,15 @@ RUN echo "deb http://ftp.debian.org/debian $(sed -n 's/^VERSION=.*(\(.*\)).*/\1/
         && sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf \
         && echo 'ServerName localhost' > /etc/apache2/conf-available/fqdn.conf \
         && a2enconf fqdn \
-        && a2enmod rewrite expires
+        && a2enmod rewrite expires proxy proxy_http ssl headers
 
-    COPY --chmod=0755 bin/phpdxdebug bin/apache2-foreground-supervised bin/wp-cron-loop bin/wp-provision bin/wp-runtime-init /usr/local/bin/
+    COPY --chmod=0755 bin/phpdxdebug bin/apache2-foreground-supervised bin/wp-cron-loop bin/wp-provision bin/wp-runtime-init bin/wp-uploads-origin-init /usr/local/bin/
 
     COPY usr/local/share/ /usr/local/share/
     COPY etc/apache2/ /etc/apache2/
-    RUN a2enconf wordpress-doctor
+    # TLS is used for outbound media proxying; do not add an inbound HTTPS listener.
+    RUN a2enconf wordpress-doctor \
+        && sed -i '/^[[:space:]]*Listen 443$/d' /etc/apache2/ports.conf
 
     COPY --chmod=0644 etc/supervisor/conf.d/wordpress.conf /etc/supervisor/conf.d/wordpress.conf
 

@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
 
+wp-uploads-origin-init
+
 mkdir -p /var/log/supervisor
 exec supervisord -n -c /etc/supervisor/supervisord.conf
