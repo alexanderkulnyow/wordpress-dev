@@ -58,6 +58,7 @@ Edit the example's `.env`, then run `docker compose up -d`.
 | `WORDPRESS_DB_PASSWORD` | Required; quote passwords containing `$` or `#` with single quotes |
 | `WORDPRESS_TABLE_PREFIX` / `WORDPRESS_DEBUG` | `wp_` / `0` |
 | `WORDPRESS_PLUGINS` | Comma-separated slugs; empty installs no extra plugins |
+| `WORDPRESS_UPLOADS_ORIGIN` | Empty (disabled); optional HTTP(S) origin for missing uploads |
 | `WP_CRON_INTERVAL` | `60` seconds |
 | `XDEBUG` | `false`; requires `APP_ENV=dev` |
 | `WORDPRESS_MEM_LIMIT` / `WORDPRESS_CPUS` | `1g` / `2` |
@@ -68,6 +69,47 @@ Full templates: [mod_php](examples/apache/.env.example), [FPM](examples/apache-f
 
 For debugging, set `APP_ENV=dev`, `XDEBUG=true` and `WORDPRESS_DEBUG=1`, then pull and recreate.
 Your IDE should listen on `9003`; Xdebug connects to `host.docker.internal:9003`.
+
+### Remote media fallback for local development
+
+Both Apache runtimes and their dev/prod images support this optional setting in `.env`:
+
+```dotenv
+WORDPRESS_UPLOADS_ORIGIN=https://aigenis.by
+```
+
+Run `docker compose up -d` to recreate this service with the new environment.
+Set `WORDPRESS_UPLOADS_ORIGIN=` and run the same command to disable it.
+A plain `docker compose restart` does not apply changed Compose environment variables.
+The generated Apache configuration is replaced or removed on every container start;
+site files, `wp-config.php`, volumes and `.htaccess` files are preserved. When enabled,
+startup creates an empty uploads directory owned by the web user if it is absent;
+existing directories retain their ownership.
+
+Use an HTTP(S) origin with a hostname or IP and optional port, for example
+`https://aigenis.by` or `http://media.example.test:8080`. A trailing `/` is accepted;
+credentials, other paths, query strings and fragments are rejected at startup.
+HTTPS verifies the upstream certificate chain, expiry and hostname using the container's CA store.
+Point the origin at a separate upstream, never back at the local fallback service.
+
+For `/wp-content/uploads/` Apache serves an existing local file or directory normally.
+For a missing file it proxies **GET/HEAD** to the same path and query string on the origin.
+Other methods for missing uploads return 404 locally. Other URL paths keep their usual behavior.
+The browser uses the local URL; Apache streams the response, including HEAD, Range/206,
+content type and upstream 404, without writing the media or a cache to disk.
+Local Cookie and Authorization headers are stripped only for fallback requests;
+upstream Set-Cookie is also removed. Forward proxying stays disabled, and existing
+Apache access and execution restrictions still apply. No WordPress plugin is needed.
+
+Remote files depend on the availability of the upstream and its access rules; an upstream
+failure cannot be served from a local cache. Use the upstream's canonical origin to avoid
+redirects; redirects to the configured uploads origin are rewritten to the local address.
+Media URLs must point through the **local site**: absolute production URLs in existing content
+bypass this fallback. Configure those URLs separately when preparing your local database.
+New WordPress uploads remain local and take priority immediately. PHP image processing,
+editing and regenerating old thumbnails still require the **original file on local disk**.
+Custom Apache aliases, rewrites or handlers inside uploads may need their own review;
+the fallback uses the standard `/var/www/html/wp-content/uploads` directory.
 
 ### Working on your own plugin or theme
 
@@ -131,6 +173,8 @@ Existing sites retain their settings; administrators can change these defaults l
 
 Provisioning schedules `wordpress_docker_doctor` for **03:00 in the WordPress timezone**, once per day.
 The event runs `wp doctor check --all`; overdue events run when cron resumes.
+Both image variants pin WP-CLI `2.12.0` and Doctor `2.3.0`. Doctor `2.3.1` calls
+`WP_CLI\Path`, which is unavailable in WP-CLI `2.12.0`, and crashes when a cache flush is detected.
 Startup installs the runtime MU-plugin and creates `wp-content/wp-doctor.log`.
 The log contains output, timestamps and exit codes, independently of `WP_DEBUG_LOG`; HTTP access is denied.
 
@@ -178,4 +222,21 @@ bash tests/docker/all.sh
 ```
 
 Requires Docker, Bash, curl and Python 3. Uses isolated test containers and volumes.
-Checks installation, cron, Doctor, persistence, log mounts and Xdebug; FPM also checks auto-install and failure detection.
+Checks installation, cron, Doctor, persistence, log mounts, uploads fallback and Xdebug; FPM also checks auto-install and failure detection.
+
+The isolated [uploads checks](tests/docker/uploads-origin.sh) also run independently:
+
+```bash
+bash tests/docker/uploads-origin.sh wordpress-local:prod apache
+bash tests/docker/uploads-origin.sh wordpress-fpm-local:prod apache-fpm
+```
+
+They use a controlled HTTP/HTTPS origin from the tested image, without contacting production.
+They cover local priority, media responses, credentials, methods/paths, access restrictions,
+HEAD/Range, 404, no downloads, certificate verification, validation and restart enable/disable.
+The common initialization helper is mirrored across the standalone build contexts, like the
+existing runtime scripts; `all.sh` checks that its two copies are identical.
+
+Apache references: [proxy rewrite flag](https://httpd.apache.org/docs/2.4/rewrite/flags.html#flag_p),
+[late header processing](https://httpd.apache.org/docs/2.4/mod/mod_headers.html#early)
+and [upstream TLS verification](https://httpd.apache.org/docs/2.4/mod/mod_ssl.html#sslproxyverify).

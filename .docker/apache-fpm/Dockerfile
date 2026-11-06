@@ -4,7 +4,7 @@ FROM php:8.3-fpm-bookworm
 
 ARG WORDPRESS_VERSION=7.1.3
 ARG WP_CLI_VERSION=2.12.0
-ARG WP_DOCTOR_VERSION=2.3.1
+ARG WP_DOCTOR_VERSION=2.3.0
 ARG IMAGICK_VERSION=3.8.1
 ENV WP_CLI_PACKAGES_DIR=/usr/local/share/wp-cli/packages
 
@@ -20,7 +20,7 @@ RUN apt-get update \
     && docker-php-ext-enable imagick \
     && rm -rf /var/lib/apt/lists/* \
     && a2dissite 000-default \
-    && a2enmod mpm_event proxy proxy_fcgi rewrite expires headers \
+    && a2enmod mpm_event proxy proxy_http ssl proxy_fcgi rewrite expires headers \
     && mkdir -p /run/php \
     && ln -sf /dev/stdout /var/log/apache2/access.log \
     && ln -sf /dev/stderr /var/log/apache2/error.log
@@ -53,7 +53,9 @@ COPY usr/local/share/ /usr/local/share/
 COPY usr/local/etc/php-fpm.d/ /usr/local/etc/php-fpm.d/
 COPY etc/apache2/ /etc/apache2/
 COPY etc/supervisor/ /etc/supervisor/
-RUN a2ensite wordpress
+# TLS is used for outbound media proxying; do not add an inbound HTTPS listener.
+RUN a2ensite wordpress \
+    && sed -i '/^[[:space:]]*Listen 443$/d' /etc/apache2/ports.conf
 
 ARG APP_ENV=prod
 ARG XDEBUG_VERSION=3.5.3

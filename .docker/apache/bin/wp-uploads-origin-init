@@ -1,0 +1,83 @@
+#!/usr/local/bin/php
+<?php
+// Mirrored in both self-contained build contexts; tests/docker/all.sh checks parity.
+declare(strict_types=1);
+
+$config = '/etc/apache2/conf-enabled/wordpress-uploads-origin.conf';
+// Remove the previous startup's configuration even if the new value is invalid.
+if (file_exists($config) && !unlink($config)) {
+    throw new RuntimeException('Cannot remove previous uploads fallback configuration.');
+}
+$origin = getenv('WORDPRESS_UPLOADS_ORIGIN');
+$origin = $origin === false ? '' : $origin;
+if ($origin === '') {
+    exit(0);
+}
+
+$valid = preg_match('~\A(https?)://(\[[0-9a-fA-F:]+\]|[a-zA-Z0-9.-]+)(?::([0-9]{1,5}))?/?\z~D', $origin, $parts);
+if ($valid) {
+    $host = $parts[2];
+    $valid = str_starts_with($host, '[')
+        ? filter_var(substr($host, 1, -1), FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false
+        : filter_var($host, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) !== false;
+    $valid = $valid && (!isset($parts[3]) || ((int) $parts[3] >= 1 && (int) $parts[3] <= 65535));
+}
+if (!$valid) {
+    fwrite(STDERR, "WORDPRESS_UPLOADS_ORIGIN must be an HTTP(S) origin with a host and optional port, without credentials, path, query or fragment.\n");
+    exit(1);
+}
+$origin = rtrim($origin, '/');
+
+// Apache only walks Directory rules for directories that exist. A fresh site
+// needs the empty uploads directory; never change an existing directory's owner.
+$uploads = '/var/www/html/wp-content/uploads';
+if (!is_dir($uploads)) {
+    if (!mkdir($uploads, 0775)) {
+        throw new RuntimeException('Cannot create the uploads directory.');
+    }
+    $user = ltrim(getenv('APACHE_RUN_USER') ?: 'www-data', '#');
+    $group = ltrim(getenv('APACHE_RUN_GROUP') ?: 'www-data', '#');
+    if (!chown($uploads, ctype_digit($user) ? (int) $user : $user)
+        || !chgrp($uploads, ctype_digit($group) ? (int) $group : $group)) {
+        throw new RuntimeException('Cannot set ownership of the new uploads directory.');
+    }
+}
+
+// Directory rewrites run after access checks and override the inherited WordPress
+// front controller only for uploads. Never grant access or replace PHP handlers.
+$template = <<<'APACHE'
+# Generated at container startup; edit WORDPRESS_UPLOADS_ORIGIN instead.
+ProxyRequests Off
+SSLProxyEngine On
+SSLProxyVerify require
+SSLProxyCheckPeerName On
+SSLProxyCheckPeerExpire On
+SSLProxyCACertificateFile /etc/ssl/certs/ca-certificates.crt
+
+<Directory /var/www/html/wp-content/uploads>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/wp-content/uploads/
+    RewriteRule ^ - [END]
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [END]
+    RewriteCond %{REQUEST_METHOD} !^(GET|HEAD)$
+    RewriteRule ^ - [R=404,END]
+    # Escape decoded filenames, preserving path separators (Apache >= 2.4.57).
+    RewriteRule ^(.*)$ "@ORIGIN@/wp-content/uploads/$1" [B,BNE=/-._~,BNP,NE,P,END]
+    ErrorDocument 404 default
+</Directory>
+
+# Late header processing sees the proxy handler's filename. Keep local requests intact.
+<Location /wp-content/uploads/>
+    RequestHeader unset Cookie "expr=%{REQUEST_FILENAME} =~ m#^proxy:https?://#"
+    RequestHeader unset Authorization "expr=%{REQUEST_FILENAME} =~ m#^proxy:https?://#"
+    Header unset Set-Cookie "expr=%{REQUEST_FILENAME} =~ m#^proxy:https?://#"
+    Header always unset Set-Cookie "expr=%{REQUEST_FILENAME} =~ m#^proxy:https?://#"
+    ProxyErrorOverride Off
+    ProxyPassReverse "@ORIGIN@/wp-content/uploads/"
+</Location>
+APACHE;
+if (file_put_contents($config, str_replace('@ORIGIN@', $origin, $template) . "\n") === false) {
+    throw new RuntimeException('Cannot write uploads fallback configuration.');
+}

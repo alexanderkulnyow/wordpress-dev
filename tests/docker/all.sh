@@ -4,6 +4,9 @@ set -Eeuo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 image_prefix="${1:-wordpress-smoke}"
 
+# Keep shared runtime logic identical while preserving standalone Docker build contexts.
+cmp "$root/.docker/apache/bin/wp-uploads-origin-init" "$root/.docker/apache-fpm/bin/wp-uploads-origin-init"
+
 for runtime in apache apache-fpm; do
     for variant in prod dev; do
         image="$image_prefix-$runtime:$variant"
@@ -13,6 +16,7 @@ done
 
 for runtime in apache apache-fpm; do
     for variant in prod dev; do
+        bash "$root/tests/docker/uploads-origin.sh" "$image_prefix-$runtime:$variant" "$runtime"
         bash "$root/tests/docker/log-mount.sh" "$image_prefix-$runtime:$variant" "$runtime"
     done
     # A prod image must ignore XDEBUG=true; dev must support both settings.
@@ -23,4 +27,4 @@ for runtime in apache apache-fpm; do
 done
 
 bash "$root/tests/docker/wordpress.sh" "$image_prefix-apache-fpm:prod" false false true apache-fpm
-echo 'PASS: all four images, log mounts, defaults, existing sites, Doctor, Xdebug settings and FPM auto-install'
+echo 'PASS: all four images, log mounts, defaults, existing sites, Doctor, uploads fallback, Xdebug settings and FPM auto-install'

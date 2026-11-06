@@ -62,6 +62,7 @@ services:
             WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD:?Set WORDPRESS_DB_PASSWORD in .env}
             WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX:-wp_}
             WORDPRESS_DEBUG: ${WORDPRESS_DEBUG:-0}
+            WORDPRESS_UPLOADS_ORIGIN: ${WORDPRESS_UPLOADS_ORIGIN:-}
             WORDPRESS_PLUGINS: ${WORDPRESS_PLUGINS-}
             WP_CRON_INTERVAL: ${WP_CRON_INTERVAL:-60}
             XDEBUG: ${XDEBUG:-false}
@@ -102,6 +103,8 @@ WORDPRESS_DEBUG=0
 
 # Comma-separated plugin slugs; empty installs no extra plugins.
 WORDPRESS_PLUGINS=
+# Optional remote media origin; empty disables fallback.
+WORDPRESS_UPLOADS_ORIGIN=
 WP_CRON_INTERVAL=60
 # To debug locally, select APP_ENV=dev and XDEBUG=true.
 XDEBUG=false
@@ -218,6 +221,15 @@ Generated salts persist in `wp-config.php`. An existing custom configuration is 
 Updating the image does not update core files already present in the site volume. Core/plugin updates
 and any `wp core update-db` operation need a separate deployment procedure and an appropriate backup.
 Credentials must be supplied at runtime; do not bake them into the image.
+
+## Remote media during local development
+
+`WORDPRESS_UPLOADS_ORIGIN` defaults to empty. Set it to `https://aigenis.by` to serve missing
+`/wp-content/uploads/` files through Apache while retaining local files and new uploads.
+The [shared media fallback documentation](../README.md#remote-media-fallback-for-local-development)
+covers setup, disabling, certificate checks, local media URLs and PHP processing limitations.
+The same behavior is available in mod_php/FPM, dev/prod; it does not change WordPress configuration
+or require auto-install. FPM's WordPress front controller does not handle remote media 404s.
 
 ## Runtime checks and resources
 
