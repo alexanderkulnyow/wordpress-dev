@@ -50,14 +50,40 @@ docker cp "$root/tests/docker/fixtures/uploads-upstream.php" "$upstream:/tmp/ups
 cat > "$work/start-upstream" <<'UPSTREAM'
 #!/bin/bash
 set -e
-openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=upstream \
-    -addext subjectAltName=DNS:upstream -keyout /tmp/upstream.key -out /tmp/upstream.crt >/dev/null 2>&1
+# Trust only the root on the client; Apache must follow the served intermediate.
+openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=uploads-test-root \
+    -addext 'basicConstraints=critical,CA:TRUE,pathlen:1' \
+    -addext 'keyUsage=critical,keyCertSign,cRLSign' \
+    -keyout /tmp/root.key -out /tmp/root.crt >/dev/null 2>&1
+openssl req -new -newkey rsa:2048 -nodes -subj /CN=uploads-test-intermediate \
+    -keyout /tmp/intermediate.key -out /tmp/intermediate.csr >/dev/null 2>&1
+cat > /tmp/intermediate.ext <<'EXT'
+basicConstraints=critical,CA:TRUE,pathlen:0
+keyUsage=critical,keyCertSign,cRLSign
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
+EXT
+openssl x509 -req -days 1 -in /tmp/intermediate.csr -CA /tmp/root.crt -CAkey /tmp/root.key \
+    -CAcreateserial -extfile /tmp/intermediate.ext -out /tmp/intermediate.crt >/dev/null 2>&1
+openssl req -new -newkey rsa:2048 -nodes -subj /CN=upstream \
+    -keyout /tmp/upstream.key -out /tmp/upstream.csr >/dev/null 2>&1
+cat > /tmp/upstream.ext <<'EXT'
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth
+subjectAltName=DNS:upstream
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
+EXT
+openssl x509 -req -days 1 -in /tmp/upstream.csr -CA /tmp/intermediate.crt -CAkey /tmp/intermediate.key \
+    -CAcreateserial -extfile /tmp/upstream.ext -out /tmp/upstream.crt >/dev/null 2>&1
+cat /tmp/upstream.crt /tmp/intermediate.crt > /tmp/upstream-fullchain.pem
 cat > /etc/apache2/sites-enabled/000-upstream.conf <<'APACHE'
 Listen 443
 <VirtualHost *:443>
     ServerName upstream
     SSLEngine On
-    SSLCertificateFile /tmp/upstream.crt
+    SSLCertificateFile /tmp/upstream-fullchain.pem
     SSLCertificateKeyFile /tmp/upstream.key
     ProxyPass / http://127.0.0.1:8080/
 </VirtualHost>
@@ -181,18 +207,22 @@ restart_with https://upstream
 request "$url/wp-content/uploads/untrusted.jpg"
 case "$code" in 500|502) ;; *) echo "Expected TLS proxy failure, got $code." >&2; exit 1 ;; esac
 grep -qi 'Error during SSL Handshake' "$work/body"
-docker cp "$upstream:/tmp/upstream.crt" "$work/upstream.crt"
-docker cp "$work/upstream.crt" "$site:/usr/local/share/ca-certificates/uploads-test.crt"
+# Deliberately do not install the leaf or intermediate into the client's trust store.
+docker cp "$upstream:/tmp/root.crt" "$work/root.crt"
+docker cp "$work/root.crt" "$site:/usr/local/share/ca-certificates/uploads-test.crt"
 docker exec "$site" update-ca-certificates >/dev/null
 restart_with https://upstream
 request "$url/wp-content/uploads/trusted.jpg"
-[ "$code" = 200 ]
+if [ "$code" != 200 ]; then
+    echo "Expected HTTPS 200 with a trusted root and served intermediate, got $code." >&2
+    exit 1
+fi
 [ "$(cat "$work/body")" = remote-media-0123456789 ]
 restart_with https://wrong-host
 request "$url/wp-content/uploads/wrong-host.jpg"
 case "$code" in 500|502) ;; *) echo "Expected TLS proxy failure, got $code." >&2; exit 1 ;; esac
 grep -qi 'Error during SSL Handshake' "$work/body"
-echo 'PASS: HTTPS requires a trusted certificate and matching hostname'
+echo 'PASS: HTTPS follows the served intermediate to the trusted root and rejects untrusted chains and wrong hostnames'
 
 restart_with ''
 docker exec "$site" test ! -e /etc/apache2/conf-enabled/wordpress-uploads-origin.conf
